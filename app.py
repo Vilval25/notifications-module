@@ -1,5 +1,5 @@
 """
-Punto de entrada principal de la aplicación REST API
+Punto de entrada principal de la aplicación REST API con FastAPI
 Ejecutar con: python app.py
 """
 
@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 # Cargar variables de entorno desde el archivo .env
 load_dotenv()
 
+import uvicorn
 from config.config import Config
 from src.interface.notification_controller import NotificationController
 from src.business.notification_service import NotificationService
@@ -69,25 +70,35 @@ def initialize_controller() -> NotificationController:
 
 if __name__ == '__main__':
     print("=" * 60)
-    print("🚀 Servidor de Notificaciones REST API")
+    print("🚀 Servidor de Notificaciones REST API con FastAPI")
     print("=" * 60)
     print("\nInicializando componentes...")
 
     # Inicializar controlador
     controller = initialize_controller()
 
-    # Crear aplicación Flask
+    # Crear aplicación FastAPI
     app = create_app(controller)
 
+    print("\n✅ Componentes inicializados correctamente")
     print("\nEndpoints disponibles:")
-    print("  • GET  http://localhost:5000/")
-    print("  • GET  http://localhost:5000/health")
-    print("  • POST http://localhost:5000/api/notifications/send")
-    print("  • GET  http://localhost:5000/api/notifications/logs")
+    print("  • GET  http://localhost:8000/")
+    print("  • GET  http://localhost:8000/health")
+    print("  • POST http://localhost:8000/api/notifications/send")
+    print("  • GET  http://localhost:8000/api/notifications/logs")
+    print("\n📚 Documentación:")
+    print("  • Swagger UI: http://localhost:8000/docs")
+    print("  • ReDoc:      http://localhost:8000/redoc")
+    print("  • OpenAPI:    http://localhost:8000/openapi.json")
     print("\n" + "=" * 60)
-    print("Servidor iniciado en http://localhost:5000")
+    print("Servidor iniciado en http://localhost:8000")
     print("Presiona Ctrl+C para detener")
     print("=" * 60 + "\n")
 
-    # Ejecutar servidor
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Ejecutar servidor con Uvicorn
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=8000,
+        log_level="info"
+    )

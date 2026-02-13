@@ -60,7 +60,8 @@ Modulo de Notificaciones/
 ## Características
 
 - **Arquitectura por Capas**: Separación clara entre dominio, negocio, interfaz, infraestructura y API
-- **API REST**: Endpoints HTTP para integración con otros sistemas
+- **FastAPI + OpenAPI**: API REST moderna con documentación automática Swagger/ReDoc
+- **Validación Automática**: Pydantic para validación de requests/responses
 - **Multi-canal**: Soporte para Email (SMTP), SMS (Twilio) y WhatsApp (Meta Business API)
 - **Motor de Plantillas**: Uso de Handlebars para personalizar mensajes
 - **Persistencia SQL Nativa**: Implementación directa con SQL usando SQLite (fácilmente adaptable a PostgreSQL/MySQL)
@@ -68,35 +69,43 @@ Modulo de Notificaciones/
 - **Logging**: Registro completo de todas las notificaciones enviadas
 - **Dual Mode**: Usar como API REST o como librería Python
 
-## Instalación
+## Instalación Rápida
 
-1. Clonar el repositorio
-
-2. Instalar dependencias:
 ```bash
+# 1. Instalar dependencias
 pip install -r requirements.txt
+
+# 2. Configurar variables de entorno
+copy .env.example .env
+# Edita .env con tus credenciales
+
+# 3. Iniciar servidor
+python app.py
 ```
 
-3. Configurar variables de entorno:
-```bash
-cp .env.example .env
-# Editar .env con tus credenciales
-```
+**Ver guía completa:** [QUICKSTART.md](QUICKSTART.md)
 
 ## Uso
 
-### Opción 1: Como API REST (Recomendado)
+### Opción 1: Como API REST con FastAPI (Recomendado)
 
 #### Iniciar el servidor:
 ```bash
 python app.py
 ```
 
-El servidor se iniciará en `http://localhost:5000`
+El servidor se iniciará en `http://localhost:8000`
+
+#### Ver documentación interactiva:
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+- **OpenAPI Schema**: http://localhost:8000/openapi.json
+
+Desde Swagger UI puedes probar todos los endpoints directamente desde el navegador!
 
 #### Enviar notificación vía API:
 ```bash
-curl -X POST http://localhost:5000/api/notifications/send \
+curl -X POST http://localhost:8000/api/notifications/send \
   -H "Content-Type: application/json" \
   -d '{
     "recipient": "usuario@ejemplo.com",
@@ -111,7 +120,7 @@ curl -X POST http://localhost:5000/api/notifications/send \
 
 #### Ver logs vía API:
 ```bash
-curl http://localhost:5000/api/notifications/logs?limit=10
+curl http://localhost:8000/api/notifications/logs?limit=10
 ```
 
 #### Endpoints disponibles:
@@ -119,6 +128,8 @@ curl http://localhost:5000/api/notifications/logs?limit=10
 - `GET /health` - Estado de salud
 - `POST /api/notifications/send` - Enviar notificación
 - `GET /api/notifications/logs` - Obtener logs
+- `GET /docs` - Documentación Swagger UI (interactiva)
+- `GET /redoc` - Documentación ReDoc (alternativa)
 
 ### Opción 2: Como librería Python
 
