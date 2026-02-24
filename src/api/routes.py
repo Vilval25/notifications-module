@@ -4,6 +4,8 @@ API REST para el módulo de notificaciones usando FastAPI
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from typing import Optional
 from .models import (
     NotificationSendRequest,
@@ -15,12 +17,23 @@ from .models import (
     ErrorResponse,
     ChannelEnum
 )
+from .template_models import (
+    TemplateListResponse,
+    TemplateDetailResponse,
+    TemplateCreateRequest,
+    TemplateUpdateRequest,
+    TemplatePreviewRequest,
+    TemplatePreviewResponse,
+    TemplateValidationResponse,
+    TemplateDeleteResponse
+)
 from ..domain.notification_channel import NotificationChannel
 from ..interface.notification_request import NotificationRequest
 from ..interface.notification_controller import NotificationController
+from ..business.template_service import TemplateService
 
 
-def create_app(notification_controller: NotificationController) -> FastAPI:
+def create_app(notification_controller: NotificationController, template_service: TemplateService) -> FastAPI:
     """
     Crea y configura la aplicación FastAPI
 
@@ -144,9 +157,9 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
         {
           "recipient": "usuario@ejemplo.com",
           "channel": "email",
-          "template_name": "welcome",
+          "template_name": "bienvenida",
           "params": {
-            "name": "Juan Pérez",
+            "name": "Fabián García",
             "source_module": "USER_REGISTRATION"
           }
         }
@@ -272,6 +285,255 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
                 "logs": logs_response
             }
 
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    # ============================================
+    # ENDPOINTS DE GESTIÓN DE PLANTILLAS
+    # ============================================
+
+    # Montar archivos estáticos
+    app.mount("/static", StaticFiles(directory="static"), name="static")
+
+    @app.get(
+        "/templates-ui",
+        tags=["Templates UI"],
+        summary="Interfaz web de gestión de plantillas",
+        include_in_schema=False
+    )
+    async def templates_ui():
+        """Sirve la interfaz web de gestión de plantillas"""
+        return FileResponse("static/index.html")
+
+    @app.get(
+        "/api/templates",
+        response_model=TemplateListResponse,
+        tags=["Templates"],
+        summary="Listar plantillas",
+        description="Obtiene la lista de todas las plantillas Handlebars disponibles"
+    )
+    async def list_templates():
+        """
+        Lista todas las plantillas .hbs disponibles en el sistema.
+
+        Retorna los nombres sin la extensión .hbs
+        """
+        try:
+            templates = template_service.list_templates()
+            return {
+                "templates": templates,
+                "total": len(templates)
+            }
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.get(
+        "/api/templates/{name}",
+        response_model=TemplateDetailResponse,
+        tags=["Templates"],
+        summary="Obtener plantilla",
+        description="Obtiene el contenido y metadatos de una plantilla específica"
+    )
+    async def get_template(name: str):
+        """
+        Obtiene una plantilla por su nombre.
+
+        **Args:**
+        - name: Nombre de la plantilla sin extensión .hbs
+
+        **Returns:**
+        - Contenido de la plantilla y metadatos
+        """
+        try:
+            template = template_service.get_template(name)
+            if template is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Plantilla '{name}' no encontrada"
+                )
+            return template
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.post(
+        "/api/templates",
+        response_model=TemplateDetailResponse,
+        status_code=201,
+        tags=["Templates"],
+        summary="Crear plantilla",
+        description="Crea una nueva plantilla Handlebars"
+    )
+    async def create_template(request: TemplateCreateRequest):
+        """
+        Crea una nueva plantilla.
+
+        **Validaciones:**
+        - El nombre no puede contener caracteres especiales
+        - La sintaxis Handlebars debe ser válida
+        - No puede existir otra plantilla con el mismo nombre
+
+        **Example:**
+        ```json
+        {
+          "name": "password_reset",
+          "content": "<h1>Restablecer contraseña</h1>\\n<p>Hola {{name}}</p>"
+        }
+        ```
+        """
+        try:
+            # Validar sintaxis
+            validation = template_service.validate_syntax(request.content)
+            if not validation['valid']:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Sintaxis inválida: {validation['error']}"
+                )
+
+            # Crear plantilla
+            success = template_service.create_template(request.name, request.content)
+            if not success:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"La plantilla '{request.name}' ya existe"
+                )
+
+            # Retornar la plantilla creada
+            template = template_service.get_template(request.name)
+            return template
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.put(
+        "/api/templates/{name}",
+        response_model=TemplateDetailResponse,
+        tags=["Templates"],
+        summary="Actualizar plantilla",
+        description="Actualiza el contenido de una plantilla existente"
+    )
+    async def update_template(name: str, request: TemplateUpdateRequest):
+        """
+        Actualiza una plantilla existente.
+
+        **Args:**
+        - name: Nombre de la plantilla a actualizar
+        - content: Nuevo contenido Handlebars
+
+        **Validaciones:**
+        - La plantilla debe existir
+        - La sintaxis Handlebars debe ser válida
+        """
+        try:
+            # Validar sintaxis
+            validation = template_service.validate_syntax(request.content)
+            if not validation['valid']:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Sintaxis inválida: {validation['error']}"
+                )
+
+            # Actualizar plantilla
+            success = template_service.update_template(name, request.content)
+            if not success:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Plantilla '{name}' no encontrada"
+                )
+
+            # Retornar la plantilla actualizada
+            template = template_service.get_template(name)
+            return template
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.delete(
+        "/api/templates/{name}",
+        response_model=TemplateDeleteResponse,
+        tags=["Templates"],
+        summary="Eliminar plantilla",
+        description="Elimina una plantilla del sistema"
+    )
+    async def delete_template(name: str):
+        """
+        Elimina una plantilla.
+
+        **Args:**
+        - name: Nombre de la plantilla a eliminar
+
+        **Warning:** Esta operación es irreversible
+        """
+        try:
+            success = template_service.delete_template(name)
+            if not success:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Plantilla '{name}' no encontrada"
+                )
+
+            return {
+                "status": "success",
+                "message": f"Plantilla '{name}' eliminada correctamente"
+            }
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.post(
+        "/api/templates/preview",
+        response_model=TemplatePreviewResponse,
+        tags=["Templates"],
+        summary="Preview de plantilla",
+        description="Renderiza una plantilla con datos de prueba sin guardarla"
+    )
+    async def preview_template(request: TemplatePreviewRequest):
+        """
+        Renderiza una plantilla con parámetros de prueba.
+
+        Útil para ver el resultado antes de guardar la plantilla.
+
+        **Example:**
+        ```json
+        {
+          "content": "<h1>Hola {{name}}!</h1>",
+          "params": {
+            "name": "Juan Pérez"
+          }
+        }
+        ```
+        """
+        try:
+            result = template_service.preview_template(request.content, request.params)
+            return result
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.post(
+        "/api/templates/validate",
+        response_model=TemplateValidationResponse,
+        tags=["Templates"],
+        summary="Validar sintaxis",
+        description="Valida la sintaxis Handlebars sin guardar la plantilla"
+    )
+    async def validate_template(request: TemplatePreviewRequest):
+        """
+        Valida la sintaxis de una plantilla Handlebars.
+
+        **Args:**
+        - content: Contenido Handlebars a validar
+
+        **Returns:**
+        - valid: Si la sintaxis es correcta
+        - error: Mensaje de error si hay problemas
+        """
+        try:
+            result = template_service.validate_syntax(request.content)
+            return result
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 

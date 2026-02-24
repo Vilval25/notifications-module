@@ -14,6 +14,7 @@ from src.interface.notification_controller import NotificationController
 from src.business.notification_service import NotificationService
 from src.business.handlebars_engine import HandlebarsEngine
 from src.business.sender_factory import SenderFactory
+from src.business.template_service import TemplateService
 from src.infrastructure.senders.smtp_sender import SmtpSender
 from src.infrastructure.senders.twilio_sms_sender import TwilioSmsSender
 from src.infrastructure.senders.meta_whatsapp_sender import MetaWhatsAppSender
@@ -21,18 +22,21 @@ from src.infrastructure.repository.sql_notification_repository import SqlNotific
 from src.api import create_app
 
 
-def initialize_controller() -> NotificationController:
+def initialize_controller() -> tuple[NotificationController, TemplateService]:
     """
     Inicializa y configura todos los componentes de la aplicación
 
     Returns:
-        NotificationController configurado y listo para usar
+        Tupla con NotificationController y TemplateService configurados
     """
     # Configurar repositorio
     repository = SqlNotificationRepository(Config.DATABASE_PATH)
 
     # Configurar motor de plantillas
     template_engine = HandlebarsEngine(Config.TEMPLATES_PATH)
+
+    # Configurar servicio de templates
+    template_service = TemplateService(Config.TEMPLATES_PATH)
 
     # Configurar senders
     smtp_sender = SmtpSender(
@@ -65,31 +69,34 @@ def initialize_controller() -> NotificationController:
     )
 
     # Configurar controlador
-    return NotificationController(notification_service)
+    return NotificationController(notification_service), template_service
 
 
 if __name__ == '__main__':
     print("=" * 60)
-    print("🚀 Servidor de Notificaciones REST API con FastAPI")
+    print("Servidor de Notificaciones REST API con FastAPI")
     print("=" * 60)
     print("\nInicializando componentes...")
 
-    # Inicializar controlador
-    controller = initialize_controller()
+    # Inicializar controlador y servicio de templates
+    controller, template_service = initialize_controller()
 
     # Crear aplicación FastAPI
-    app = create_app(controller)
+    app = create_app(controller, template_service)
 
-    print("\n✅ Componentes inicializados correctamente")
+    print("\nComponentes inicializados correctamente")
     print("\nEndpoints disponibles:")
-    print("  • GET  http://localhost:8000/")
-    print("  • GET  http://localhost:8000/health")
-    print("  • POST http://localhost:8000/api/notifications/send")
-    print("  • GET  http://localhost:8000/api/notifications/logs")
-    print("\n📚 Documentación:")
-    print("  • Swagger UI: http://localhost:8000/docs")
-    print("  • ReDoc:      http://localhost:8000/redoc")
-    print("  • OpenAPI:    http://localhost:8000/openapi.json")
+    print("  - GET  http://localhost:8000/")
+    print("  - GET  http://localhost:8000/health")
+    print("  - POST http://localhost:8000/api/notifications/send")
+    print("  - GET  http://localhost:8000/api/notifications/logs")
+    print("\nGestion de Plantillas:")
+    print("  - UI:         http://localhost:8000/templates-ui")
+    print("  - API:        http://localhost:8000/api/templates")
+    print("\nDocumentacion:")
+    print("  - Swagger UI: http://localhost:8000/docs")
+    print("  - ReDoc:      http://localhost:8000/redoc")
+    print("  - OpenAPI:    http://localhost:8000/openapi.json")
     print("\n" + "=" * 60)
     print("Servidor iniciado en http://localhost:8000")
     print("Presiona Ctrl+C para detener")

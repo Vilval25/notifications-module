@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Plantillas - Campus360</title>
+
+    <!-- Quill CSS -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>Gestión de Plantillas de Notificaciones</h1>
+            <p class="subtitle">Campus360 - Editor Visual para Administradores</p>
+        </header>
+
+        <!-- Main Layout -->
+        <div class="main-layout">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <h2>Plantillas</h2>
+                    <button id="btn-new" class="btn btn-primary" title="Nueva plantilla">
+                        + Nueva
+                    </button>
+                </div>
+
+                <div class="template-list" id="template-list">
+                    <!-- Lista se carga dinámicamente -->
+                    <div class="loading">Cargando...</div>
+                </div>
+            </aside>
+
+            <!-- Editor Panel -->
+            <main class="editor-panel">
+                <div class="editor-header">
+                    <div class="editor-title">
+                        <span id="current-template-name">Selecciona una plantilla</span>
+                        <span id="template-status" class="status-badge"></span>
+                    </div>
+                    <div class="editor-actions">
+                        <button id="btn-save" class="btn btn-success" disabled>Guardar</button>
+                        <button id="btn-delete" class="btn btn-danger" disabled>Eliminar</button>
+                    </div>
+                </div>
+
+                <!-- Panel de Variables -->
+                <div class="variables-panel">
+                    <h3>Variables Disponibles</h3>
+                    <p class="help-text">Haz click para insertar en la plantilla</p>
+
+                    <div class="variables-grid">
+                        <button class="var-btn" data-var="{{name}}" title="Nombre de la persona">
+                            <span class="var-icon">👤</span> Nombre
+                        </button>
+                        <button class="var-btn" data-var="{{email}}" title="Correo electrónico">
+                            <span class="var-icon">📧</span> Email
+                        </button>
+                        <button class="var-btn" data-var="{{phone}}" title="Número de teléfono">
+                            <span class="var-icon">📱</span> Teléfono
+                        </button>
+                        <button class="var-btn" data-var="{{company}}" title="Nombre de la empresa">
+                            <span class="var-icon">🏢</span> Empresa
+                        </button>
+                        <button class="var-btn" data-var="{{date}}" title="Fecha actual">
+                            <span class="var-icon">📅</span> Fecha
+                        </button>
+                        <button class="var-btn" data-var="{{link}}" title="Enlace o URL">
+                            <span class="var-icon">🔗</span> Enlace
+                        </button>
+                        <button class="var-btn" data-var="{{code}}" title="Código de confirmación">
+                            <span class="var-icon">🔑</span> Código
+                        </button>
+                        <button class="var-btn" data-var="{{message}}" title="Mensaje personalizado">
+                            <span class="var-icon">💬</span> Mensaje
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Editor WYSIWYG -->
+                <div class="editor-container">
+                    <div id="editor"></div>
+                </div>
+
+                <div class="editor-footer">
+                    <div class="validation-status" id="validation-status"></div>
+                    <div class="file-info" id="file-info"></div>
+                </div>
+            </main>
+
+            <!-- Preview Panel -->
+            <aside class="preview-panel">
+                <div class="preview-header">
+                    <h2>Preview</h2>
+                    <button id="btn-refresh-preview" class="btn btn-secondary" title="Actualizar preview">
+                        ↻ Actualizar
+                    </button>
+                </div>
+
+                <div class="preview-params">
+                    <label>Variables detectadas:</label>
+                    <div id="detected-vars" class="detected-vars">
+                        <!-- Se genera automáticamente -->
+                    </div>
+                </div>
+
+                <div class="preview-content" id="preview-content">
+                    <div class="preview-placeholder">
+                        El preview se mostrará aquí
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- Modal para nueva plantilla -->
+    <div id="modal-new-template" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Nueva Plantilla</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label for="base-template-selector">Empezar desde plantilla base:</label>
+                <select id="base-template-selector" class="form-input">
+                    <option value="">-- Plantilla en blanco --</option>
+                    <option value="base_welcome">Bienvenida</option>
+                    <option value="base_notification">Notificación</option>
+                    <option value="base_confirmation">Confirmación</option>
+                </select>
+
+                <label for="new-template-name" style="margin-top: 1rem;">Nombre de la plantilla:</label>
+                <input
+                    type="text"
+                    id="new-template-name"
+                    placeholder="ej: bienvenida_cliente, confirmacion_pedido"
+                    class="form-input"
+                >
+                <p class="form-help">Sin extensión .hbs, sin caracteres especiales</p>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-modal-cancel" class="btn btn-secondary">Cancelar</button>
+                <button id="btn-modal-create" class="btn btn-primary">Crear</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Quill JS -->
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+
+    <!-- App JS -->
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/editor.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
