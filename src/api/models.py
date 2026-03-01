@@ -14,6 +14,16 @@ class ChannelEnum(str, Enum):
     WHATSAPP = "whatsapp"
 
 
+class EventTypeEnum(str, Enum):
+    """Enum de tipos de eventos para notificaciones"""
+    TRAMITE_OBSERVADO = "tramite_observado"
+    TRAMITE_APROBADO = "tramite_aprobado"
+    TRAMITE_RECHAZADO = "tramite_rechazado"
+    CONFIRMACION_CAMBIO_PASSWORD = "confirmacion_cambio_password"
+    COMPROBANTE_PAGO = "comprobante_pago"
+    CREACION_CUENTA = "creacion_cuenta"
+
+
 class NotificationSendRequest(BaseModel):
     """Request para enviar notificación"""
     recipient: str = Field(
@@ -25,17 +35,20 @@ class NotificationSendRequest(BaseModel):
         ...,
         description="Canal de envío de la notificación"
     )
-    template_name: str = Field(
+    event_type: EventTypeEnum = Field(
         ...,
-        description="Nombre de la plantilla a utilizar (sin extensión)",
-        examples=["welcome", "notification"]
+        description="Tipo de evento que dispara la notificación. El sistema usará la plantilla activa para este evento.",
+        examples=["tramite_aprobado", "creacion_cuenta"]
     )
     params: Dict[str, Any] = Field(
         ...,
-        description="Parámetros para renderizar la plantilla",
+        description="Parámetros para renderizar la plantilla (nombre, email, enlace, telefono, etc.)",
         examples=[{
-            "name": "Juan Pérez",
-            "source_module": "USER_REGISTRATION"
+            "nombre": "Juan Pérez",
+            "email": "juan@ejemplo.com",
+            "enlace": "https://campus360.com/tramite/123",
+            "telefono": "+51 999 999 999",
+            "source_module": "TRAMITES"
         }]
     )
 
@@ -45,10 +58,13 @@ class NotificationSendRequest(BaseModel):
                 {
                     "recipient": "usuario@ejemplo.com",
                     "channel": "email",
-                    "template_name": "welcome",
+                    "event_type": "tramite_aprobado",
                     "params": {
-                        "name": "Juan Pérez",
-                        "source_module": "USER_REGISTRATION"
+                        "nombre": "Juan Pérez",
+                        "email": "juan@ejemplo.com",
+                        "enlace": "https://campus360.com/tramite/123",
+                        "telefono": "+51 999 999 999",
+                        "source_module": "TRAMITES"
                     }
                 }
             ]

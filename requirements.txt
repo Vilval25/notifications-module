@@ -1,8 +1,15 @@
+# Framework web y servidor ASGI
+fastapi==0.135.0
+uvicorn[standard]==0.41.0
+pydantic==2.12.5
+aiofiles==25.1.0
+
+# Motor de plantillas
 pybars3==0.9.7
-twilio==8.11.1
-requests==2.31.0
-python-dotenv==1.0.0
-fastapi==0.115.0
-uvicorn[standard]==0.32.0
-pydantic==2.9.2
-aiofiles==23.2.1
+
+# Clientes de terceros para notificaciones
+twilio==9.10.2
+requests==2.32.5
+
+# Variables de entorno
+python-dotenv==1.2.2

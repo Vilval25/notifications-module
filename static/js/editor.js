@@ -63,14 +63,8 @@ class TemplateEditor {
         const range = this.quill.getSelection(true);
 
         if (range) {
-            // Insertar la variable como texto
+            // Insertar la variable como texto sin formato especial
             this.quill.insertText(range.index, variable, 'user');
-
-            // Aplicar formato especial a la variable (opcional)
-            this.quill.formatText(range.index, variable.length, {
-                'background': '#3b82f6',
-                'color': '#ffffff'
-            });
 
             // Mover cursor al final de la variable insertada
             this.quill.setSelection(range.index + variable.length);
@@ -81,10 +75,6 @@ class TemplateEditor {
             // Si no hay selección, insertar al final
             const length = this.quill.getLength();
             this.quill.insertText(length - 1, variable, 'user');
-            this.quill.formatText(length - 1, variable.length, {
-                'background': '#3b82f6',
-                'color': '#ffffff'
-            });
             this.quill.setSelection(length + variable.length - 1);
         }
     }

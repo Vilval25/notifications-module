@@ -9,143 +9,149 @@
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/styles.css?v=8">
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <header class="header">
-            <h1>Gestión de Plantillas de Notificaciones</h1>
-            <p class="subtitle">Campus360 - Editor Visual para Administradores</p>
-        </header>
+    <div class="app-container">
+        <!-- SIDEBAR COLAPSABLE -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-toggle">
+                <button id="btn-toggle-sidebar" class="btn-toggle" title="Expandir/Colapsar menú">
+                    ☰
+                </button>
+            </div>
+            <nav class="sidebar-menu">
+                <a href="#" class="menu-item active" data-section="templates">
+                    <span class="menu-icon">📄</span>
+                    <span class="menu-text">Gestión de Plantillas</span>
+                </a>
+                <!-- Futuros items de menú aquí -->
+            </nav>
+        </aside>
 
-        <!-- Main Layout -->
-        <div class="main-layout">
-            <!-- Sidebar -->
-            <aside class="sidebar">
-                <div class="sidebar-header">
-                    <h2>Plantillas</h2>
-                    <button id="btn-new" class="btn btn-primary" title="Nueva plantilla">
-                        + Nueva
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+            <!-- HEADER -->
+            <header class="content-header">
+                <div class="header-left">
+                    <h1>Gestión de Plantillas</h1>
+                    <p class="subtitle">Administra las plantillas de notificaciones del sistema</p>
+                </div>
+                <div class="header-right">
+                    <button id="btn-new" class="btn btn-primary">
+                        <span class="btn-icon">+</span> Nueva Plantilla
                     </button>
                 </div>
+            </header>
 
-                <div class="template-list" id="template-list">
-                    <!-- Lista se carga dinámicamente -->
-                    <div class="loading">Cargando...</div>
-                </div>
-            </aside>
-
-            <!-- Editor Panel -->
-            <main class="editor-panel">
-                <div class="editor-header">
-                    <div class="editor-title">
-                        <span id="current-template-name">Selecciona una plantilla</span>
-                        <span id="template-status" class="status-badge"></span>
-                    </div>
-                    <div class="editor-actions">
-                        <button id="btn-save" class="btn btn-success" disabled>Guardar</button>
-                        <button id="btn-delete" class="btn btn-danger" disabled>Eliminar</button>
-                    </div>
+            <!-- TABLA DE PLANTILLAS -->
+            <div class="templates-table-container">
+                <div class="table-filters">
+                    <input
+                        type="text"
+                        id="search-input"
+                        class="search-input"
+                        placeholder="🔍 Buscar plantilla por nombre o asunto..."
+                    >
                 </div>
 
-                <!-- Panel de Variables -->
-                <div class="variables-panel">
-                    <h3>Variables Disponibles</h3>
-                    <p class="help-text">Haz click para insertar en la plantilla</p>
-
-                    <div class="variables-grid">
-                        <button class="var-btn" data-var="{{name}}" title="Nombre de la persona">
-                            <span class="var-icon">👤</span> Nombre
-                        </button>
-                        <button class="var-btn" data-var="{{email}}" title="Correo electrónico">
-                            <span class="var-icon">📧</span> Email
-                        </button>
-                        <button class="var-btn" data-var="{{phone}}" title="Número de teléfono">
-                            <span class="var-icon">📱</span> Teléfono
-                        </button>
-                        <button class="var-btn" data-var="{{company}}" title="Nombre de la empresa">
-                            <span class="var-icon">🏢</span> Empresa
-                        </button>
-                        <button class="var-btn" data-var="{{date}}" title="Fecha actual">
-                            <span class="var-icon">📅</span> Fecha
-                        </button>
-                        <button class="var-btn" data-var="{{link}}" title="Enlace o URL">
-                            <span class="var-icon">🔗</span> Enlace
-                        </button>
-                        <button class="var-btn" data-var="{{code}}" title="Código de confirmación">
-                            <span class="var-icon">🔑</span> Código
-                        </button>
-                        <button class="var-btn" data-var="{{message}}" title="Mensaje personalizado">
-                            <span class="var-icon">💬</span> Mensaje
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Editor WYSIWYG -->
-                <div class="editor-container">
-                    <div id="editor"></div>
-                </div>
-
-                <div class="editor-footer">
-                    <div class="validation-status" id="validation-status"></div>
-                    <div class="file-info" id="file-info"></div>
-                </div>
-            </main>
-
-            <!-- Preview Panel -->
-            <aside class="preview-panel">
-                <div class="preview-header">
-                    <h2>Preview</h2>
-                    <button id="btn-refresh-preview" class="btn btn-secondary" title="Actualizar preview">
-                        ↻ Actualizar
-                    </button>
-                </div>
-
-                <div class="preview-params">
-                    <label>Variables detectadas:</label>
-                    <div id="detected-vars" class="detected-vars">
-                        <!-- Se genera automáticamente -->
-                    </div>
-                </div>
-
-                <div class="preview-content" id="preview-content">
-                    <div class="preview-placeholder">
-                        El preview se mostrará aquí
-                    </div>
-                </div>
-            </aside>
+                <table class="templates-table" id="templates-table">
+                    <thead>
+                        <tr>
+                            <th>Nombre / Asunto</th>
+                            <th>Evento</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="templates-tbody">
+                        <!-- Filas dinámicas generadas por JS -->
+                        <tr>
+                            <td colspan="4" class="loading-row">
+                                <div class="loading-spinner"></div>
+                                <span>Cargando plantillas...</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
-    <!-- Modal para nueva plantilla -->
-    <div id="modal-new-template" class="modal">
-        <div class="modal-content">
+    <!-- MODAL: EDITOR DE PLANTILLA -->
+    <div id="modal-editor" class="modal">
+        <div class="modal-content modal-large">
             <div class="modal-header">
-                <h3>Nueva Plantilla</h3>
-                <button class="modal-close">&times;</button>
+                <h3 id="modal-title">Nueva Plantilla</h3>
+                <button class="modal-close" id="modal-close-btn">&times;</button>
             </div>
             <div class="modal-body">
-                <label for="base-template-selector">Empezar desde plantilla base:</label>
-                <select id="base-template-selector" class="form-input">
-                    <option value="">-- Plantilla en blanco --</option>
-                    <option value="base_welcome">Bienvenida</option>
-                    <option value="base_notification">Notificación</option>
-                    <option value="base_confirmation">Confirmación</option>
-                </select>
+                <form id="template-form">
+                    <!-- Nombre de plantilla -->
+                    <div class="form-group">
+                        <label for="input-name">Nombre de la plantilla <span class="required">*</span></label>
+                        <input
+                            type="text"
+                            id="input-name"
+                            class="form-input"
+                            placeholder="ej: tramite_aprobado_notif"
+                            required
+                        >
+                        <small class="form-help">Sin extensión .hbs, sin caracteres especiales</small>
+                    </div>
 
-                <label for="new-template-name" style="margin-top: 1rem;">Nombre de la plantilla:</label>
-                <input
-                    type="text"
-                    id="new-template-name"
-                    placeholder="ej: bienvenida_cliente, confirmacion_pedido"
-                    class="form-input"
-                >
-                <p class="form-help">Sin extensión .hbs, sin caracteres especiales</p>
+                    <!-- Evento -->
+                    <div class="form-group">
+                        <label for="input-event">Evento <span class="required">*</span></label>
+                        <select id="input-event" class="form-input" required>
+                            <option value="">-- Seleccionar evento --</option>
+                            <option value="creacion_cuenta">Creación de Cuenta</option>
+                            <option value="tramite_observado">Trámite Observado</option>
+                            <option value="tramite_aprobado">Trámite Aprobado</option>
+                            <option value="tramite_rechazado">Trámite Rechazado</option>
+                            <option value="confirmacion_cambio_password">Confirmación de Cambio de Contraseña</option>
+                            <option value="comprobante_pago">Comprobante de Pago</option>
+                        </select>
+                        <small class="form-help">El evento solo se puede cambiar si la plantilla no está en uso</small>
+                    </div>
+
+                    <!-- Asunto -->
+                    <div class="form-group">
+                        <label for="input-subject">Asunto del email <span class="required">*</span></label>
+                        <input
+                            type="text"
+                            id="input-subject"
+                            class="form-input"
+                            placeholder="ej: Tu trámite ha sido aprobado"
+                            required
+                        >
+                    </div>
+
+                    <!-- Variables Disponibles -->
+                    <div class="form-group">
+                        <label for="variable-selector">Insertar variable</label>
+                        <select id="variable-selector" class="form-input">
+                            <option value="">-- Seleccionar variable para insertar --</option>
+                            <option value="{{nombre}}">👤 nombre</option>
+                            <option value="{{email}}">📧 email</option>
+                            <option value="{{enlace}}">🔗 enlace</option>
+                            <option value="{{telefono}}">📱 telefono</option>
+                        </select>
+                        <small class="form-help">Selecciona una variable para insertarla en el cuerpo</small>
+                    </div>
+
+                    <!-- Cuerpo del mensaje -->
+                    <div class="form-group">
+                        <label for="editor">Cuerpo del mensaje <span class="required">*</span></label>
+                        <div id="editor" class="editor-container"></div>
+                    </div>
+                </form>
             </div>
             <div class="modal-footer">
                 <button id="btn-modal-cancel" class="btn btn-secondary">Cancelar</button>
-                <button id="btn-modal-create" class="btn btn-primary">Crear</button>
+                <button id="btn-modal-save" class="btn btn-success">
+                    <span class="btn-icon">💾</span> Guardar
+                </button>
             </div>
         </div>
     </div>
@@ -157,8 +163,10 @@
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
 
     <!-- App JS -->
-    <script src="/static/js/api.js"></script>
-    <script src="/static/js/editor.js"></script>
-    <script src="/static/js/app.js"></script>
+    <script src="/static/js/api.js?v=8"></script>
+    <script src="/static/js/editor.js?v=8"></script>
+    <script src="/static/js/sidebar.js?v=8"></script>
+    <script src="/static/js/table.js?v=8"></script>
+    <script src="/static/js/app.js?v=8"></script>
 </body>
 </html>

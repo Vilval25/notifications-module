@@ -1,6 +1,6 @@
 # Módulo de Notificaciones
 
-Sistema de notificaciones multi-canal con arquitectura por capas basado en Clean Architecture.
+Sistema de notificaciones multi-canal con arquitectura por capas basado en Clean Architecture y sistema de eventos de negocio.
 
 ## Estructura del Proyecto
 
@@ -60,6 +60,8 @@ Modulo de Notificaciones/
 ## Características
 
 - **Arquitectura por Capas**: Separación clara entre dominio, negocio, interfaz, infraestructura y API
+- **Sistema de Eventos**: Notificaciones basadas en eventos de negocio con plantillas activas
+- **Gestión de Plantillas**: UI web para CRUD completo de plantillas Handlebars
 - **FastAPI + OpenAPI**: API REST moderna con documentación automática Swagger/ReDoc
 - **Validación Automática**: Pydantic para validación de requests/responses
 - **Multi-canal**: Soporte para Email (SMTP), SMS (Twilio) y WhatsApp (Meta Business API)
@@ -83,8 +85,6 @@ copy .env.example .env
 python app.py
 ```
 
-**Ver guía completa:** [QUICKSTART.md](QUICKSTART.md)
-
 ## Uso
 
 ### Opción 1: Como API REST con FastAPI (Recomendado)
@@ -103,20 +103,42 @@ El servidor se iniciará en `http://localhost:8000`
 
 Desde Swagger UI puedes probar todos los endpoints directamente desde el navegador!
 
-#### Enviar notificación vía API:
+#### Gestión de Plantillas (UI Web):
+```
+http://localhost:8000/templates-ui
+```
+
+Interfaz web para:
+- Crear, editar y eliminar plantillas
+- Activar/desactivar plantillas por evento
+- Editor WYSIWYG con Quill.js
+- Gestión de eventos de negocio
+
+#### Enviar notificación vía API (Sistema de Eventos):
 ```bash
 curl -X POST http://localhost:8000/api/notifications/send \
   -H "Content-Type: application/json" \
   -d '{
     "recipient": "usuario@ejemplo.com",
     "channel": "email",
-    "template_name": "welcome",
+    "event_type": "tramite_aprobado",
     "params": {
-      "name": "Juan Pérez",
-      "source_module": "USER_REGISTRATION"
+      "nombre": "Juan Pérez",
+      "email": "juan@ejemplo.com",
+      "enlace": "https://campus360.com/tramite/123",
+      "telefono": "+51 999 999 999",
+      "source_module": "TRAMITES"
     }
   }'
 ```
+
+**Eventos disponibles:**
+- `tramite_observado` - Trámite con observaciones
+- `tramite_aprobado` - Trámite aprobado
+- `tramite_rechazado` - Trámite rechazado
+- `confirmacion_cambio_password` - Cambio de contraseña
+- `comprobante_pago` - Comprobante de pago
+- `creacion_cuenta` - Creación de cuenta
 
 #### Ver logs vía API:
 ```bash
@@ -126,8 +148,11 @@ curl http://localhost:8000/api/notifications/logs?limit=10
 #### Endpoints disponibles:
 - `GET /` - Información de la API
 - `GET /health` - Estado de salud
-- `POST /api/notifications/send` - Enviar notificación
+- `POST /api/notifications/send` - Enviar notificación por evento
 - `GET /api/notifications/logs` - Obtener logs
+- `GET /api/events` - Listar eventos con plantillas activas
+- `GET /api/templates` - Listar plantillas disponibles
+- `GET /templates-ui` - Interfaz de gestión de plantillas
 - `GET /docs` - Documentación Swagger UI (interactiva)
 - `GET /redoc` - Documentación ReDoc (alternativa)
 

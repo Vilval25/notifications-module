@@ -19,24 +19,28 @@ from src.infrastructure.senders.smtp_sender import SmtpSender
 from src.infrastructure.senders.twilio_sms_sender import TwilioSmsSender
 from src.infrastructure.senders.meta_whatsapp_sender import MetaWhatsAppSender
 from src.infrastructure.repository.sql_notification_repository import SqlNotificationRepository
+from src.infrastructure.repository.template_event_repository import TemplateEventRepository
 from src.api import create_app
 
 
-def initialize_controller() -> tuple[NotificationController, TemplateService]:
+def initialize_controller() -> tuple[NotificationController, TemplateService, TemplateEventRepository]:
     """
     Inicializa y configura todos los componentes de la aplicación
 
     Returns:
-        Tupla con NotificationController y TemplateService configurados
+        Tupla con NotificationController, TemplateService y TemplateEventRepository configurados
     """
-    # Configurar repositorio
+    # Configurar repositorio de notificaciones
     repository = SqlNotificationRepository(Config.DATABASE_PATH)
+
+    # Configurar repositorio de eventos de plantillas
+    event_repository = TemplateEventRepository(Config.DATABASE_PATH)
 
     # Configurar motor de plantillas
     template_engine = HandlebarsEngine(Config.TEMPLATES_PATH)
 
-    # Configurar servicio de templates
-    template_service = TemplateService(Config.TEMPLATES_PATH)
+    # Configurar servicio de templates (con event_repository)
+    template_service = TemplateService(Config.TEMPLATES_PATH, event_repository)
 
     # Configurar senders
     smtp_sender = SmtpSender(
@@ -69,7 +73,7 @@ def initialize_controller() -> tuple[NotificationController, TemplateService]:
     )
 
     # Configurar controlador
-    return NotificationController(notification_service), template_service
+    return NotificationController(notification_service), template_service, event_repository
 
 
 if __name__ == '__main__':
@@ -78,11 +82,11 @@ if __name__ == '__main__':
     print("=" * 60)
     print("\nInicializando componentes...")
 
-    # Inicializar controlador y servicio de templates
-    controller, template_service = initialize_controller()
+    # Inicializar controlador, servicio de templates y repositorio de eventos
+    controller, template_service, event_repository = initialize_controller()
 
     # Crear aplicación FastAPI
-    app = create_app(controller, template_service)
+    app = create_app(controller, template_service, event_repository)
 
     print("\nComponentes inicializados correctamente")
     print("\nEndpoints disponibles:")

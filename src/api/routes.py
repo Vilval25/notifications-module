@@ -15,7 +15,8 @@ from .models import (
     HealthResponse,
     APIInfoResponse,
     ErrorResponse,
-    ChannelEnum
+    ChannelEnum,
+    EventTypeEnum
 )
 from .template_models import (
     TemplateListResponse,
@@ -25,7 +26,17 @@ from .template_models import (
     TemplatePreviewRequest,
     TemplatePreviewResponse,
     TemplateValidationResponse,
-    TemplateDeleteResponse
+    TemplateDeleteResponse,
+    # Nuevos modelos
+    EventType,
+    TemplateWithStatusResponse,
+    TemplateListWithStatusResponse,
+    TemplateCreateRequestNew,
+    TemplateUpdateRequestNew,
+    TemplateDetailResponseNew,
+    EventResponse,
+    EventListResponse,
+    ActivateEventRequest
 )
 from ..domain.notification_channel import NotificationChannel
 from ..interface.notification_request import NotificationRequest
@@ -33,12 +44,16 @@ from ..interface.notification_controller import NotificationController
 from ..business.template_service import TemplateService
 
 
-def create_app(notification_controller: NotificationController, template_service: TemplateService) -> FastAPI:
+def create_app(notification_controller: NotificationController,
+               template_service: TemplateService,
+               event_repository) -> FastAPI:
     """
     Crea y configura la aplicación FastAPI
 
     Args:
         notification_controller: Controlador de notificaciones configurado
+        template_service: Servicio de templates configurado
+        event_repository: Repositorio de eventos de plantillas
 
     Returns:
         Aplicación FastAPI configurada con OpenAPI
@@ -51,7 +66,8 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
 ## Características
 
 * **Multi-canal**: Envío por Email, SMS y WhatsApp
-* **Plantillas**: Sistema de plantillas Handlebars
+* **Sistema de Eventos**: Notificaciones basadas en eventos de negocio
+* **Gestión de Plantillas**: CRUD completo con plantillas Handlebars activas por evento
 * **Logging**: Registro completo de todas las notificaciones
 * **Validación**: Validación automática con Pydantic
 
@@ -60,8 +76,17 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
 * `email` - Envío por correo electrónico (SMTP)
 * `sms` - Envío por SMS (Twilio)
 * `whatsapp` - Envío por WhatsApp (Meta Business API)
+
+## Eventos del Sistema
+
+* `tramite_observado` - Trámite con observaciones
+* `tramite_aprobado` - Trámite aprobado
+* `tramite_rechazado` - Trámite rechazado
+* `confirmacion_cambio_password` - Cambio de contraseña
+* `comprobante_pago` - Comprobante de pago recibido
+* `creacion_cuenta` - Creación de cuenta de usuario
         """,
-        version="1.0.0",
+        version="2.0.0",
         contact={
             "name": "Soporte Campus360",
             "email": "soporte@campus360.com"
@@ -95,7 +120,7 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
         """
         return {
             "message": "API de Notificaciones - Campus360",
-            "version": "1.0",
+            "version": "2.0",
             "documentation": {
                 "swagger": "/docs",
                 "redoc": "/redoc",
@@ -103,8 +128,10 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
             },
             "endpoints": {
                 "GET /health": "Health check",
-                "POST /api/notifications/send": "Enviar notificación",
-                "GET /api/notifications/logs": "Ver logs"
+                "POST /api/notifications/send": "Enviar notificación por evento",
+                "GET /api/notifications/logs": "Ver logs de notificaciones",
+                "GET /api/events": "Listar eventos con plantillas activas",
+                "GET /api/templates": "Listar plantillas disponibles"
             }
         }
 
@@ -132,24 +159,34 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
                 "description": "Datos inválidos en la solicitud",
                 "model": ErrorResponse
             },
+            404: {
+                "description": "No hay plantilla activa para el evento",
+                "model": ErrorResponse
+            },
             500: {
                 "description": "Error interno del servidor",
                 "model": ErrorResponse
             }
         },
         tags=["Notifications"],
-        summary="Enviar notificación"
+        summary="Enviar notificación por evento"
     )
     async def send_notification(request: NotificationSendRequest):
         """
-        Envía una notificación a través del canal especificado.
+        Envía una notificación usando la plantilla activa del evento especificado.
 
         ## Parámetros
 
         * **recipient**: Destinatario (email, teléfono, etc.)
         * **channel**: Canal de envío (email, sms, whatsapp)
-        * **template_name**: Nombre de la plantilla a usar
-        * **params**: Parámetros para renderizar la plantilla
+        * **event_type**: Tipo de evento (tramite_aprobado, creacion_cuenta, etc.)
+        * **params**: Parámetros para renderizar la plantilla (nombre, email, enlace, telefono)
+
+        ## Flujo
+
+        1. El sistema busca la plantilla activa para el evento especificado
+        2. Renderiza la plantilla con los parámetros proporcionados
+        3. Envía la notificación por el canal especificado
 
         ## Ejemplo
 
@@ -157,10 +194,13 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
         {
           "recipient": "usuario@ejemplo.com",
           "channel": "email",
-          "template_name": "bienvenida",
+          "event_type": "tramite_aprobado",
           "params": {
-            "name": "Fabián García",
-            "source_module": "USER_REGISTRATION"
+            "nombre": "Juan Pérez",
+            "email": "juan@ejemplo.com",
+            "enlace": "https://campus360.com/tramite/123",
+            "telefono": "+51 999 999 999",
+            "source_module": "TRAMITES"
           }
         }
         ```
@@ -175,6 +215,15 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
         ```
         """
         try:
+            # Obtener la plantilla activa para el evento
+            active_template = template_service.get_active_template_for_event(request.event_type.value)
+
+            if not active_template:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"No hay plantilla activa para el evento '{request.event_type.value}'"
+                )
+
             # Mapear canal de string a enum del dominio
             channel_map = {
                 ChannelEnum.EMAIL: NotificationChannel.EMAIL,
@@ -184,11 +233,11 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
 
             channel = channel_map[request.channel]
 
-            # Crear request del dominio
+            # Crear request del dominio usando el nombre de la plantilla activa
             notification_request = NotificationRequest(
                 recipient=request.recipient,
                 channel=channel,
-                template_name=request.template_name,
+                template_name=active_template['name'],
                 params=request.params
             )
 
@@ -202,6 +251,9 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
 
         except HTTPException:
             raise
+        except ValueError as ve:
+            # Error de validación (no hay plantilla activa)
+            raise HTTPException(status_code=404, detail=str(ve))
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -307,19 +359,19 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
 
     @app.get(
         "/api/templates",
-        response_model=TemplateListResponse,
+        response_model=TemplateListWithStatusResponse,
         tags=["Templates"],
-        summary="Listar plantillas",
-        description="Obtiene la lista de todas las plantillas Handlebars disponibles"
+        summary="Listar plantillas con estado",
+        description="Obtiene la lista de todas las plantillas con metadata y estado activo/inactivo"
     )
     async def list_templates():
         """
-        Lista todas las plantillas .hbs disponibles en el sistema.
+        Lista todas las plantillas .hbs disponibles con su información completa.
 
-        Retorna los nombres sin la extensión .hbs
+        Incluye: nombre, asunto, evento asignado, estado (activa/inactiva), fecha de modificación
         """
         try:
-            templates = template_service.list_templates()
+            templates = template_service.list_templates_with_status()
             return {
                 "templates": templates,
                 "total": len(templates)
@@ -329,10 +381,10 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
 
     @app.get(
         "/api/templates/{name}",
-        response_model=TemplateDetailResponse,
+        response_model=TemplateDetailResponseNew,
         tags=["Templates"],
         summary="Obtener plantilla",
-        description="Obtiene el contenido y metadatos de una plantilla específica"
+        description="Obtiene el contenido y metadatos completos de una plantilla específica"
     )
     async def get_template(name: str):
         """
@@ -342,7 +394,7 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
         - name: Nombre de la plantilla sin extensión .hbs
 
         **Returns:**
-        - Contenido de la plantilla y metadatos
+        - Contenido de la plantilla, asunto, evento, estado y metadatos
         """
         try:
             template = template_service.get_template(name)
@@ -359,26 +411,29 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
 
     @app.post(
         "/api/templates",
-        response_model=TemplateDetailResponse,
+        response_model=TemplateDetailResponseNew,
         status_code=201,
         tags=["Templates"],
         summary="Crear plantilla",
-        description="Crea una nueva plantilla Handlebars"
+        description="Crea una nueva plantilla Handlebars con asunto y evento"
     )
-    async def create_template(request: TemplateCreateRequest):
+    async def create_template(request: TemplateCreateRequestNew):
         """
-        Crea una nueva plantilla.
+        Crea una nueva plantilla con metadata.
 
         **Validaciones:**
         - El nombre no puede contener caracteres especiales
         - La sintaxis Handlebars debe ser válida
         - No puede existir otra plantilla con el mismo nombre
+        - El evento debe ser uno de los 5 tipos válidos
 
         **Example:**
         ```json
         {
-          "name": "password_reset",
-          "content": "<h1>Restablecer contraseña</h1>\\n<p>Hola {{name}}</p>"
+          "name": "tramite_aprobado_notif",
+          "subject": "Tu trámite ha sido aprobado",
+          "event_type": "tramite_aprobado",
+          "content": "<h1>¡Hola {{nombre}}!</h1>\\n<p>Tu trámite ha sido aprobado.</p>"
         }
         ```
         """
@@ -391,8 +446,13 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
                     detail=f"Sintaxis inválida: {validation['error']}"
                 )
 
-            # Crear plantilla
-            success = template_service.create_template(request.name, request.content)
+            # Crear plantilla con subject y event_type
+            success = template_service.create_template(
+                request.name,
+                request.content,
+                request.subject,
+                request.event_type.value
+            )
             if not success:
                 raise HTTPException(
                     status_code=409,
@@ -409,22 +469,27 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
 
     @app.put(
         "/api/templates/{name}",
-        response_model=TemplateDetailResponse,
+        response_model=TemplateDetailResponseNew,
         tags=["Templates"],
         summary="Actualizar plantilla",
-        description="Actualiza el contenido de una plantilla existente"
+        description="Actualiza el asunto y contenido de una plantilla existente"
     )
-    async def update_template(name: str, request: TemplateUpdateRequest):
+    async def update_template(name: str, request: TemplateUpdateRequestNew):
         """
         Actualiza una plantilla existente.
 
         **Args:**
         - name: Nombre de la plantilla a actualizar
+        - subject: Nuevo asunto del email
         - content: Nuevo contenido Handlebars
+        - event_type: Nuevo tipo de evento (opcional, solo si no está activa)
 
         **Validaciones:**
         - La plantilla debe existir
         - La sintaxis Handlebars debe ser válida
+        - Si se cambia el evento, la plantilla no debe estar activa
+
+        **Nota:** El evento solo se puede cambiar si la plantilla NO está en uso.
         """
         try:
             # Validar sintaxis
@@ -435,17 +500,35 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
                     detail=f"Sintaxis inválida: {validation['error']}"
                 )
 
-            # Actualizar plantilla
-            success = template_service.update_template(name, request.content)
+            # Si se está renombrando, hacerlo primero
+            final_name = name
+            if request.new_name and request.new_name != name:
+                success = template_service.rename_template(name, request.new_name)
+                if not success:
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"No se pudo renombrar la plantilla '{name}'"
+                    )
+                final_name = request.new_name
+
+            # Actualizar plantilla con subject y event_type opcional
+            success = template_service.update_template(
+                final_name,
+                request.content,
+                request.subject,
+                request.event_type
+            )
             if not success:
                 raise HTTPException(
                     status_code=404,
-                    detail=f"Plantilla '{name}' no encontrada"
+                    detail=f"Plantilla '{final_name}' no encontrada"
                 )
 
             # Retornar la plantilla actualizada
-            template = template_service.get_template(name)
+            template = template_service.get_template(final_name)
             return template
+        except ValueError as ve:
+            raise HTTPException(status_code=400, detail=str(ve))
         except HTTPException:
             raise
         except Exception as e:
@@ -456,7 +539,7 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
         response_model=TemplateDeleteResponse,
         tags=["Templates"],
         summary="Eliminar plantilla",
-        description="Elimina una plantilla del sistema"
+        description="Elimina una plantilla del sistema si no está activa"
     )
     async def delete_template(name: str):
         """
@@ -464,6 +547,10 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
 
         **Args:**
         - name: Nombre de la plantilla a eliminar
+
+        **Validaciones:**
+        - No se puede eliminar una plantilla que está activa (en uso)
+        - Primero debe activarse otra plantilla para el evento
 
         **Warning:** Esta operación es irreversible
         """
@@ -479,10 +566,125 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
                 "status": "success",
                 "message": f"Plantilla '{name}' eliminada correctamente"
             }
+        except ValueError as e:
+            # Error de validación (plantilla activa)
+            raise HTTPException(status_code=400, detail=str(e))
         except HTTPException:
             raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+
+    # ============================================
+    # ENDPOINTS DE GESTIÓN DE EVENTOS
+    # ============================================
+
+    @app.get(
+        "/api/events",
+        response_model=EventListResponse,
+        tags=["Events"],
+        summary="Listar eventos",
+        description="Obtiene todos los eventos del sistema con sus plantillas activas"
+    )
+    async def list_events():
+        """
+        Lista todos los eventos con sus plantillas activas asignadas.
+
+        Los eventos son fijos en el sistema:
+        - tramite_observado
+        - tramite_aprobado
+        - tramite_rechazado
+        - confirmacion_cambio_password
+        - comprobante_pago
+        """
+        try:
+            events_data = event_repository.get_all_events()
+            events = []
+
+            for event in events_data:
+                events.append({
+                    "event_type": event.event_type,
+                    "template_name": event.template_name,
+                    "is_active": event.is_active
+                })
+
+            return {
+                "events": events,
+                "total": len(events)
+            }
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.put(
+        "/api/events/{event_type}/activate",
+        response_model=EventResponse,
+        tags=["Events"],
+        summary="Activar plantilla para evento",
+        description="Activa una plantilla para un evento específico (desactiva la anterior)"
+    )
+    async def activate_template_for_event(event_type: str, request: ActivateEventRequest):
+        """
+        Activa una plantilla para un evento.
+
+        **Args:**
+        - event_type: Tipo de evento (tramite_observado, tramite_aprobado, etc.)
+        - template_name: Nombre de la plantilla a activar
+
+        **Comportamiento:**
+        - La plantilla anterior para este evento se desactiva automáticamente
+        - Solo puede haber UNA plantilla activa por evento
+
+        **Example:**
+        ```json
+        {
+          "template_name": "bienvenida"
+        }
+        ```
+        """
+        try:
+            # Validar que el evento exista
+            event = event_repository.get_event_by_type(event_type)
+            if not event:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Evento '{event_type}' no encontrado"
+                )
+
+            # Validar que la plantilla exista
+            template = template_service.get_template(request.template_name)
+            if not template:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Plantilla '{request.template_name}' no encontrada"
+                )
+
+            # Activar plantilla para el evento
+            success = event_repository.activate_template_for_event(
+                event_type,
+                request.template_name
+            )
+
+            if not success:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Error activando plantilla para el evento"
+                )
+
+            # Retornar evento actualizado
+            updated_event = event_repository.get_event_by_type(event_type)
+            return {
+                "event_type": updated_event.event_type,
+                "template_name": updated_event.template_name,
+                "is_active": updated_event.is_active
+            }
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    # ============================================
+    # ENDPOINTS DE PREVIEW Y VALIDACIÓN
+    # ============================================
 
     @app.post(
         "/api/templates/preview",

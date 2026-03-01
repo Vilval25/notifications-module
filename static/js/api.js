@@ -41,19 +41,31 @@ class TemplateAPI {
         return this.request(`/api/templates/${encodeURIComponent(name)}`);
     }
 
-    // POST /api/templates - Crear plantilla
-    async createTemplate(name, content) {
+    // POST /api/templates - Crear plantilla (con subject y event_type)
+    async createTemplate(name, subject, eventType, content) {
         return this.request('/api/templates', {
             method: 'POST',
-            body: JSON.stringify({ name, content })
+            body: JSON.stringify({
+                name,
+                subject,
+                event_type: eventType,
+                content
+            })
         });
     }
 
-    // PUT /api/templates/{name} - Actualizar plantilla
-    async updateTemplate(name, content) {
+    // PUT /api/templates/{name} - Actualizar plantilla (con subject, event_type y new_name opcional)
+    async updateTemplate(name, subject, content, eventType = null, newName = null) {
+        const body = { subject, content };
+        if (eventType) {
+            body.event_type = eventType;
+        }
+        if (newName && newName !== name) {
+            body.new_name = newName;
+        }
         return this.request(`/api/templates/${encodeURIComponent(name)}`, {
             method: 'PUT',
-            body: JSON.stringify({ content })
+            body: JSON.stringify(body)
         });
     }
 
@@ -77,6 +89,23 @@ class TemplateAPI {
         return this.request('/api/templates/validate', {
             method: 'POST',
             body: JSON.stringify({ content })
+        });
+    }
+
+    // ============================================
+    // ENDPOINTS DE EVENTOS
+    // ============================================
+
+    // GET /api/events - Listar eventos con plantillas asignadas
+    async listEvents() {
+        return this.request('/api/events');
+    }
+
+    // PUT /api/events/{event_type}/activate - Activar plantilla para evento
+    async activateTemplateForEvent(eventType, templateName) {
+        return this.request(`/api/events/${encodeURIComponent(eventType)}/activate`, {
+            method: 'PUT',
+            body: JSON.stringify({ template_name: templateName })
         });
     }
 }
