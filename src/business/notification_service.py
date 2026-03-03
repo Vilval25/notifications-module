@@ -1,6 +1,6 @@
 from typing import List
 from ..domain.notification_log import NotificationLog
-from ..infrastructure.repository.i_notification_repository import INotificationRepository
+from ..infrastructure.repository.i_notification_log_repository import INotificationLogRepository
 from .i_template_engine import ITemplateEngine
 from .sender_factory import SenderFactory
 
@@ -9,14 +9,14 @@ class NotificationService:
     """Servicio principal para procesamiento de notificaciones"""
 
     def __init__(self, template_engine: ITemplateEngine, sender_factory: SenderFactory,
-                 repository: INotificationRepository):
+                 repository: INotificationLogRepository):
         """
         Inicializa el servicio de notificaciones
 
         Args:
             template_engine: Motor de plantillas
             sender_factory: Fábrica de senders
-            repository: Repositorio de logs
+            repository: Repositorio de logs de notificaciones
         """
         self._template_engine = template_engine
         self._sender_factory = sender_factory
@@ -34,7 +34,7 @@ class NotificationService:
         error_msg = None
 
         try:
-            print(f"\n🔔 Procesando notificación:")
+            print(f"\n[NOTIF] Procesando notificación:")
             print(f"   Canal: {request.channel.value}")
             print(f"   Destinatario: {request.recipient}")
             print(f"   Plantilla: {request.template_name}")
@@ -50,7 +50,7 @@ class NotificationService:
 
         except Exception as e:
             error_msg = f"{type(e).__name__}: {e}"
-            print(f"   ❌ Error procesando notificación: {error_msg}")
+            print(f"   [ERROR] Error procesando notificación: {error_msg}")
             success = False
 
         # Crear log
@@ -66,9 +66,9 @@ class NotificationService:
         self._repository.save(log)
 
         if success:
-            print(f"   ✅ Notificación procesada exitosamente\n")
+            print(f"   [OK] Notificación procesada exitosamente\n")
         else:
-            print(f"   ❌ Notificación falló\n")
+            print(f"   [FAILED] Notificación falló\n")
 
     def get_all_logs(self) -> List[NotificationLog]:
         """

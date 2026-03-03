@@ -1,0 +1,113 @@
+<!-- META:START
+{
+  "subject": "Trámite registrado exitosamente",
+  "event_type": "tramite_registrado",
+  "variables": ["nombre", "email", "enlace", "telefono"]
+}
+META:END -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        h1 {
+            color: #2196F3;
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            margin: 20px 0;
+        }
+        .highlight {
+            background-color: #e3f2fd;
+            padding: 15px;
+            border-left: 4px solid #2196F3;
+            margin: 20px 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 30px;
+            background-color: #2196F3;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <div class="icon">📄</div>
+                <h1>¡Trámite Registrado Exitosamente!</h1>
+            </div>
+
+            <div class="content">
+                <p>Estimado/a <strong>{{nombre}}</strong>,</p>
+
+                <p>Su trámite ha sido registrado correctamente en nuestro sistema.</p>
+
+                <div class="highlight">
+                    <strong>Próximos pasos:</strong>
+                    <ul>
+                        <li>Su solicitud será revisada por nuestro equipo</li>
+                        <li>Recibirá notificaciones sobre el estado de su trámite</li>
+                        <li>Puede seguir el progreso en el portal web</li>
+                    </ul>
+                </div>
+
+                <p style="text-align: center;">
+                    <a href="{{enlace}}" class="button">Ver Mi Trámite</a>
+                </p>
+
+                <p><strong>Información de contacto:</strong></p>
+                <ul>
+                    <li>Email: {{email}}</li>
+                    <li>Teléfono: {{telefono}}</li>
+                </ul>
+
+                <p>Si tiene alguna pregunta, no dude en contactarnos.</p>
+            </div>
+
+            <div class="footer">
+                <p>Este es un mensaje automático, por favor no responder a este correo.</p>
+                <p>&copy; 2024 Campus360 - Sistema de Notificaciones</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

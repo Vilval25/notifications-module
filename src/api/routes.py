@@ -8,15 +8,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from typing import Optional
 from .models import (
-    NotificationSendRequest,
-    NotificationSendResponse,
     NotificationLogsResponse,
     NotificationLogResponse,
     HealthResponse,
     APIInfoResponse,
-    ErrorResponse,
-    ChannelEnum,
-    EventTypeEnum
+    ErrorResponse
 )
 from .template_models import (
     TemplateListResponse,
@@ -38,8 +34,6 @@ from .template_models import (
     EventListResponse,
     ActivateEventRequest
 )
-from ..domain.notification_channel import NotificationChannel
-from ..interface.notification_request import NotificationRequest
 from ..interface.notification_controller import NotificationController
 from ..business.template_service import TemplateService
 
@@ -67,24 +61,41 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
 
 * **Multi-canal**: Envío por Email, SMS y WhatsApp
 * **Sistema de Eventos**: Notificaciones basadas en eventos de negocio
+* **Notificaciones Internas**: Panel de notificaciones para usuarios
+* **Sistema de Suscripciones**: Preferencias de notificación por usuario y evento
 * **Gestión de Plantillas**: CRUD completo con plantillas Handlebars activas por evento
 * **Logging**: Registro completo de todas las notificaciones
 * **Validación**: Validación automática con Pydantic
 
 ## Canales Disponibles
 
-* `email` - Envío por correo electrónico (SMTP)
-* `sms` - Envío por SMS (Twilio)
-* `whatsapp` - Envío por WhatsApp (Meta Business API)
+* `email` - Envío por correo electrónico (SMTP real)
+* `sms` - Envío por SMS (Mock - simulado en consola)
+* `whatsapp` - Envío por WhatsApp (Mock - simulado en consola)
 
 ## Eventos del Sistema
 
+### Eventos de Trámites
+* `tramite_registrado` - Nuevo trámite registrado
 * `tramite_observado` - Trámite con observaciones
 * `tramite_aprobado` - Trámite aprobado
 * `tramite_rechazado` - Trámite rechazado
-* `confirmacion_cambio_password` - Cambio de contraseña
-* `comprobante_pago` - Comprobante de pago recibido
+
+### Eventos de Cuenta
 * `creacion_cuenta` - Creación de cuenta de usuario
+* `cambio_contrasena` - Cambio o reseteo de contraseña
+
+## Integración para Módulos Externos
+
+Los módulos externos deben usar únicamente los 3 endpoints de eventos:
+1. **POST /api/events/tramite** - Para eventos de trámites
+2. **POST /api/events/creacion-cuenta** - Para creación de cuentas
+3. **POST /api/events/cambio-contrasena** - Para cambio de contraseña
+
+Cada endpoint procesa automáticamente:
+- Crea notificación interna (panel del usuario)
+- Verifica preferencias del usuario
+- Envía notificaciones por canales habilitados
         """,
         version="2.0.0",
         contact={
@@ -110,13 +121,20 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
         response_model=APIInfoResponse,
         tags=["Info"],
         summary="Información de la API",
-        description="Endpoint raíz que redirige a la documentación interactiva"
+        description="Endpoint raíz con información general y links a documentación"
     )
     async def home():
         """
-        Punto de entrada de la API con links a la documentación.
+        Punto de entrada de la API con información general.
 
         **Para probar la API visita:** [/docs](/docs)
+
+        ## Endpoints para Módulos Externos
+
+        Los módulos externos solo deben usar estos 3 endpoints:
+        - POST /api/events/tramite
+        - POST /api/events/creacion-cuenta
+        - POST /api/events/cambio-contrasena
         """
         return {
             "message": "API de Notificaciones - Campus360",
@@ -126,12 +144,18 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
                 "redoc": "/redoc",
                 "openapi": "/openapi.json"
             },
-            "endpoints": {
+            "endpoints_modulos_externos": {
+                "POST /api/events/tramite": "Procesar eventos de trámites (registrado, observado, aprobado, rechazado)",
+                "POST /api/events/creacion-cuenta": "Procesar creación de cuenta con email de bienvenida",
+                "POST /api/events/cambio-contrasena": "Procesar cambio/reseteo de contraseña",
+                "GET /api/notifications/logs": "Ver logs de notificaciones enviadas"
+            },
+            "otros_endpoints": {
                 "GET /health": "Health check",
-                "POST /api/notifications/send": "Enviar notificación por evento",
-                "GET /api/notifications/logs": "Ver logs de notificaciones",
                 "GET /api/events": "Listar eventos con plantillas activas",
-                "GET /api/templates": "Listar plantillas disponibles"
+                "GET /api/templates": "Gestión de plantillas (CRUD)",
+                "GET /api/internal-notifications": "Notificaciones internas del usuario",
+                "GET /api/subscriptions": "Preferencias de notificación del usuario"
             }
         }
 
@@ -147,115 +171,6 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
         """
         return {"status": "healthy"}
 
-    @app.post(
-        "/api/notifications/send",
-        response_model=NotificationSendResponse,
-        responses={
-            200: {
-                "description": "Notificación enviada exitosamente",
-                "model": NotificationSendResponse
-            },
-            400: {
-                "description": "Datos inválidos en la solicitud",
-                "model": ErrorResponse
-            },
-            404: {
-                "description": "No hay plantilla activa para el evento",
-                "model": ErrorResponse
-            },
-            500: {
-                "description": "Error interno del servidor",
-                "model": ErrorResponse
-            }
-        },
-        tags=["Notifications"],
-        summary="Enviar notificación por evento"
-    )
-    async def send_notification(request: NotificationSendRequest):
-        """
-        Envía una notificación usando la plantilla activa del evento especificado.
-
-        ## Parámetros
-
-        * **recipient**: Destinatario (email, teléfono, etc.)
-        * **channel**: Canal de envío (email, sms, whatsapp)
-        * **event_type**: Tipo de evento (tramite_aprobado, creacion_cuenta, etc.)
-        * **params**: Parámetros para renderizar la plantilla (nombre, email, enlace, telefono)
-
-        ## Flujo
-
-        1. El sistema busca la plantilla activa para el evento especificado
-        2. Renderiza la plantilla con los parámetros proporcionados
-        3. Envía la notificación por el canal especificado
-
-        ## Ejemplo
-
-        ```json
-        {
-          "recipient": "usuario@ejemplo.com",
-          "channel": "email",
-          "event_type": "tramite_aprobado",
-          "params": {
-            "nombre": "Juan Pérez",
-            "email": "juan@ejemplo.com",
-            "enlace": "https://campus360.com/tramite/123",
-            "telefono": "+51 999 999 999",
-            "source_module": "TRAMITES"
-          }
-        }
-        ```
-
-        ## Respuesta Exitosa
-
-        ```json
-        {
-          "status": "success",
-          "message": "Notificación enviada correctamente"
-        }
-        ```
-        """
-        try:
-            # Obtener la plantilla activa para el evento
-            active_template = template_service.get_active_template_for_event(request.event_type.value)
-
-            if not active_template:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"No hay plantilla activa para el evento '{request.event_type.value}'"
-                )
-
-            # Mapear canal de string a enum del dominio
-            channel_map = {
-                ChannelEnum.EMAIL: NotificationChannel.EMAIL,
-                ChannelEnum.SMS: NotificationChannel.SMS,
-                ChannelEnum.WHATSAPP: NotificationChannel.WHATSAPP
-            }
-
-            channel = channel_map[request.channel]
-
-            # Crear request del dominio usando el nombre de la plantilla activa
-            notification_request = NotificationRequest(
-                recipient=request.recipient,
-                channel=channel,
-                template_name=active_template['name'],
-                params=request.params
-            )
-
-            # Enviar notificación
-            result = notification_controller.send_notification(notification_request)
-
-            if result['status'] == 'success':
-                return result
-            else:
-                raise HTTPException(status_code=500, detail=result.get('message', 'Error al enviar notificación'))
-
-        except HTTPException:
-            raise
-        except ValueError as ve:
-            # Error de validación (no hay plantilla activa)
-            raise HTTPException(status_code=404, detail=str(ve))
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
 
     @app.get(
         "/api/notifications/logs",
@@ -270,8 +185,8 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
                 "model": ErrorResponse
             }
         },
-        tags=["Notifications"],
-        summary="Obtener logs de notificaciones"
+        tags=["Módulos Externos"],
+        summary="Obtener logs de notificaciones enviadas"
     )
     async def get_logs(
         limit: Optional[int] = Query(
@@ -738,5 +653,11 @@ API REST para el módulo de notificaciones multi-canal de Campus360.
             return result
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+
+    # ============================================
+    # ENDPOINTS DE NOTIFICACIONES INTERNAS
+    # ============================================
+    # Nota: Los endpoints de notificaciones internas se configuran
+    # en create_internal_notifications_app() y se registran por separado
 
     return app

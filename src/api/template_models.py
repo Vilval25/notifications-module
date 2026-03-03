@@ -172,6 +172,7 @@ class TemplateDeleteResponse(BaseModel):
 
 class EventType(str, Enum):
     """Tipos de eventos del sistema"""
+    TRAMITE_REGISTRADO = "tramite_registrado"
     TRAMITE_OBSERVADO = "tramite_observado"
     TRAMITE_APROBADO = "tramite_aprobado"
     TRAMITE_RECHAZADO = "tramite_rechazado"

@@ -16,6 +16,7 @@ class ChannelEnum(str, Enum):
 
 class EventTypeEnum(str, Enum):
     """Enum de tipos de eventos para notificaciones"""
+    TRAMITE_REGISTRADO = "tramite_registrado"
     TRAMITE_OBSERVADO = "tramite_observado"
     TRAMITE_APROBADO = "tramite_aprobado"
     TRAMITE_RECHAZADO = "tramite_rechazado"
@@ -164,18 +165,31 @@ class APIInfoResponse(BaseModel):
     """Response con información de la API"""
     message: str = Field(..., description="Mensaje de bienvenida")
     version: str = Field(..., description="Versión de la API")
-    endpoints: Dict[str, str] = Field(..., description="Endpoints disponibles")
+    documentation: Dict[str, str] = Field(..., description="Links a documentación")
+    endpoints_modulos_externos: Dict[str, str] = Field(..., description="Endpoints para módulos externos")
+    otros_endpoints: Dict[str, str] = Field(..., description="Otros endpoints disponibles")
 
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
-                    "message": "API de Notificaciones",
-                    "version": "1.0",
-                    "endpoints": {
-                        "POST /api/notifications/send": "Enviar una notificación",
-                        "GET /api/notifications/logs": "Obtener logs de notificaciones",
-                        "GET /health": "Estado de la API"
+                    "message": "API de Notificaciones - Campus360",
+                    "version": "2.0",
+                    "documentation": {
+                        "swagger": "/docs",
+                        "redoc": "/redoc",
+                        "openapi": "/openapi.json"
+                    },
+                    "endpoints_modulos_externos": {
+                        "POST /api/events/tramite": "Procesar eventos de trámites",
+                        "POST /api/events/creacion-cuenta": "Procesar creación de cuenta",
+                        "POST /api/events/cambio-contrasena": "Procesar cambio de contraseña",
+                        "GET /api/notifications/logs": "Ver logs de notificaciones"
+                    },
+                    "otros_endpoints": {
+                        "GET /health": "Health check",
+                        "GET /api/templates": "Gestión de plantillas",
+                        "GET /api/events": "Listar eventos"
                     }
                 }
             ]

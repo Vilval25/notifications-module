@@ -7,8 +7,7 @@ aiofiles==25.1.0
 # Motor de plantillas
 pybars3==0.9.7
 
-# Clientes de terceros para notificaciones
-twilio==9.10.2
+# Cliente HTTP (usado por varios componentes)
 requests==2.32.5
 
 # Variables de entorno

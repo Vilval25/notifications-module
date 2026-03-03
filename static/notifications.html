@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Notificaciones - Campus360</title>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/styles.css?v=9">
+    <link rel="stylesheet" href="/static/css/notifications.css?v=5">
+</head>
+<body>
+    <div class="app-container">
+        <!-- SIDEBAR COLAPSABLE -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-toggle">
+                <button id="btn-toggle-sidebar" class="btn-toggle" title="Expandir/Colapsar menú">
+                    ☰
+                </button>
+            </div>
+            <nav class="sidebar-menu">
+                <a href="#" class="menu-item active" data-section="notifications">
+                    <span class="menu-icon">🔔</span>
+                    <span class="menu-text">Mis Notificaciones</span>
+                    <span class="badge" id="unread-badge" style="display:none;">0</span>
+                </a>
+                <!-- Los usuarios normales no tienen acceso a administración -->
+            </nav>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+            <!-- HEADER -->
+            <header class="content-header">
+                <div class="header-left">
+                    <h1>Mis Notificaciones de Trámites</h1>
+                    <p class="subtitle">Historial de eventos relacionados con tus solicitudes</p>
+                </div>
+                <div class="header-right">
+                    <button id="btn-mark-all-read" class="btn btn-secondary">
+                        <span class="btn-icon">✓</span> Marcar todas como leídas
+                    </button>
+                    <button id="btn-refresh" class="btn btn-primary">
+                        <span class="btn-icon">🔄</span> Actualizar
+                    </button>
+                </div>
+            </header>
+
+            <!-- PANEL DE SUSCRIPCIONES COLAPSABLE -->
+            <div class="subscriptions-panel-wrapper">
+                <div class="subscriptions-panel">
+                    <div class="subscriptions-header" id="subscriptions-header">
+                        <div class="subscriptions-title">
+                            <h3>🔔 Preferencias de Notificación</h3>
+                            <p class="subscriptions-subtitle">Elige cómo deseas recibir notificaciones</p>
+                        </div>
+                        <button class="btn-collapse" id="btn-collapse-subscriptions" title="Expandir/Colapsar">
+                            <span class="collapse-icon">▼</span>
+                        </button>
+                    </div>
+                    <div class="subscriptions-body" id="subscriptions-body">
+                        <div class="subscriptions-content" id="subscriptions-content">
+                            <!-- Se cargará dinámicamente con JavaScript -->
+                            <div class="loading-subscriptions">Cargando...</div>
+                        </div>
+                        <div class="subscriptions-actions">
+                            <button id="btn-save-subscriptions" class="btn btn-success" style="display:none;">
+                                💾 Guardar Cambios
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FILTROS -->
+            <div class="filters-section">
+                <div class="filter-group">
+                    <label for="filter-status">Estado:</label>
+                    <select id="filter-status" class="form-input">
+                        <option value="all">Todas</option>
+                        <option value="unread">No leídas</option>
+                        <option value="read">Leídas</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filter-event">Tipo de evento:</label>
+                    <select id="filter-event" class="form-input">
+                        <option value="all">Todos</option>
+                        <option value="tramite_registrado">Trámite Registrado</option>
+                        <option value="tramite_observado">Trámite Observado</option>
+                        <option value="tramite_aprobado">Trámite Aprobado</option>
+                        <option value="tramite_rechazado">Trámite Rechazado</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <input
+                        type="text"
+                        id="search-input"
+                        class="search-input"
+                        placeholder="🔍 Buscar por ID o asunto..."
+                    >
+                </div>
+            </div>
+
+            <!-- TABLA DE NOTIFICACIONES -->
+            <div class="notifications-table-container">
+                <table class="notifications-table" id="notifications-table">
+                    <thead>
+                        <tr>
+                            <th width="80px">Estado</th>
+                            <th width="150px">ID Solicitud</th>
+                            <th width="200px">Asunto Notificación</th>
+                            <th>Asunto Solicitud</th>
+                            <th width="180px">Fecha y Hora</th>
+                            <th width="120px">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="notifications-tbody">
+                        <!-- Filas dinámicas generadas por JS -->
+                        <tr>
+                            <td colspan="6" class="loading-row">
+                                <div class="loading-spinner"></div>
+                                <span>Cargando notificaciones...</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Estado vacío -->
+                <div id="empty-state" class="empty-state" style="display: none;">
+                    <div class="empty-icon">📭</div>
+                    <h3>No tienes notificaciones</h3>
+                    <p>Cuando se generen eventos en tus trámites, aparecerán aquí.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- App JS -->
+    <script src="/static/js/notifications-api.js?v=1"></script>
+    <script src="/static/js/subscriptions-api.js?v=5"></script>
+    <script src="/static/js/subscriptions-manager.js?v=5"></script>
+    <script src="/static/js/notifications-sidebar.js?v=1"></script>
+    <script src="/static/js/notifications-app.js?v=5"></script>
+</body>
+</html>

@@ -3,12 +3,16 @@ from typing import List
 from datetime import datetime
 from ...domain.notification_log import NotificationLog
 from ...domain.notification_channel import NotificationChannel
-from .i_notification_repository import INotificationRepository
+from .i_notification_log_repository import INotificationLogRepository
 
 
-class SqlNotificationRepository(INotificationRepository):
+class SqlNotificationLogRepository(INotificationLogRepository):
     """
-    Repositorio de notificaciones usando SQL nativo.
+    Repositorio de logs de notificaciones usando SQL nativo.
+
+    Responsabilidad: Persistir el historial/auditoría de todas las notificaciones
+    enviadas por el sistema (email, SMS, WhatsApp).
+
     Implementación con SQLite, pero fácilmente adaptable a PostgreSQL, MySQL, etc.
     """
 

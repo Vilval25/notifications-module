@@ -10,4 +10,24 @@
   ]
 }
 META:END -->
-<h2>💳 Comprobante de Pago</h2><p>Estimado/a <strong>{{nombre}}</strong>,</p><p>Hemos recibido tu <strong style="color: rgb(5, 150, 105);">comprobante de pago</strong> correctamente.</p><p>Tu pago está siendo verificado y recibirás una confirmación pronto.</p><p class="ql-align-center"><a href="{{enlace}}" target="_blank" style="color: white; background-color: rgb(5, 150, 105);"><strong>Ver Detalles</strong></a></p><p>Consultas: <strong>{{telefono}}</strong></p>
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #fff;">
+  <div style="background-color: #059669; padding: 20px; border-radius: 8px 8px 0 0;">
+    <h2 style="color: #fff; margin: 0;">💳 Comprobante de Pago</h2>
+  </div>
+
+  <div style="padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+    <p style="font-size: 16px; color: #333;">Estimado/a <strong>{{nombre}}</strong>,</p>
+
+    <p style="font-size: 16px; color: #333;">Hemos recibido tu <strong style="color: #059669;">comprobante de pago</strong> correctamente.</p>
+
+    <div style="background-color: #f0fdfa; border-left: 4px solid #059669; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0; color: #065f46;">✅ Tu pago está siendo verificado y recibirás una confirmación pronto.</p>
+    </div>
+
+    <div style="text-align: center; margin: 25px 0;">
+      <a href="{{enlace}}" style="display: inline-block; background-color: #059669; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Ver Detalles</a>
+    </div>
+
+    <p style="font-size: 14px; color: #666;">Consultas: <strong>{{telefono}}</strong></p>
+  </div>
+</div>

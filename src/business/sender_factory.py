@@ -1,22 +1,24 @@
 from ..domain.notification_channel import NotificationChannel
 from ..infrastructure.senders.i_notification_sender import INotificationSender
-from ..infrastructure.senders.smtp_sender import SmtpSender
-from ..infrastructure.senders.twilio_sms_sender import TwilioSmsSender
-from ..infrastructure.senders.meta_whatsapp_sender import MetaWhatsAppSender
 
 
 class SenderFactory:
-    """Fábrica para obtener el sender apropiado según el canal"""
+    """
+    Fábrica para obtener el sender apropiado según el canal
 
-    def __init__(self, smtp_sender: SmtpSender, sms_sender: TwilioSmsSender,
-                 whatsapp_sender: MetaWhatsAppSender):
+    Acepta cualquier implementación de INotificationSender para cada canal,
+    permitiendo usar implementaciones reales o mocks según sea necesario.
+    """
+
+    def __init__(self, smtp_sender: INotificationSender, sms_sender: INotificationSender,
+                 whatsapp_sender: INotificationSender):
         """
         Inicializa la fábrica con los senders configurados
 
         Args:
-            smtp_sender: Sender para email
-            sms_sender: Sender para SMS
-            whatsapp_sender: Sender para WhatsApp
+            smtp_sender: Sender para email (SmtpSender)
+            sms_sender: Sender para SMS (MockSmsSender)
+            whatsapp_sender: Sender para WhatsApp (MockWhatsAppSender)
         """
         self._senders = {
             NotificationChannel.EMAIL: smtp_sender,

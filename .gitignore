@@ -47,3 +47,11 @@ Thumbs.db
 
 # Logs
 *.log
+tests/logs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+report.html
+junit.xml

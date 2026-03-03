@@ -11,6 +11,7 @@ class TemplatesTable {
 
         this.eventLabels = {
             'creacion_cuenta': 'Creación de Cuenta',
+            'tramite_registrado': 'Trámite Registrado',
             'tramite_observado': 'Trámite Observado',
             'tramite_aprobado': 'Trámite Aprobado',
             'tramite_rechazado': 'Trámite Rechazado',

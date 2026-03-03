@@ -41,9 +41,9 @@ class SmtpSender(INotificationSender):
         try:
             # Validar que tenemos las credenciales necesarias
             if not self._username or not self._password:
-                print("❌ SMTP Error: Credenciales no configuradas")
-                print(f"   Username: {'✓' if self._username else '✗'}")
-                print(f"   Password: {'✓' if self._password else '✗'}")
+                print("[X] SMTP Error: Credenciales no configuradas")
+                print(f"   Username: {'OK' if self._username else 'MISSING'}")
+                print(f"   Password: {'OK' if self._password else 'MISSING'}")
                 return False
 
             message = MIMEMultipart("alternative")
@@ -54,7 +54,7 @@ class SmtpSender(INotificationSender):
             html_part = MIMEText(body, "html")
             message.attach(html_part)
 
-            print(f"📧 Intentando enviar email...")
+            print(f"[EMAIL] Intentando enviar email...")
             print(f"   Host: {self._host}:{self._port}")
             print(f"   From: {self._from_email}")
             print(f"   To: {to}")
@@ -63,26 +63,26 @@ class SmtpSender(INotificationSender):
                 server.set_debuglevel(0)  # Cambiar a 1 para ver debug completo
 
                 if self._use_tls:
-                    print("   🔒 Iniciando TLS...")
+                    print("   [TLS] Iniciando TLS...")
                     server.starttls()
 
-                print("   🔑 Autenticando...")
+                print("   [AUTH] Autenticando...")
                 server.login(self._username, self._password)
 
-                print("   📤 Enviando mensaje...")
+                print("   [SEND] Enviando mensaje...")
                 server.send_message(message)
 
-            print("   ✅ Email enviado exitosamente")
+            print("   [OK] Email enviado exitosamente")
             return True
 
         except smtplib.SMTPAuthenticationError as e:
-            print(f"❌ Error de autenticación SMTP: {e}")
+            print(f"[X] Error de autenticación SMTP: {e}")
             print("   Verifica tu username y password")
             print("   Si usas Gmail, necesitas una 'App Password'")
             return False
         except smtplib.SMTPException as e:
-            print(f"❌ Error SMTP: {e}")
+            print(f"[X] Error SMTP: {e}")
             return False
         except Exception as e:
-            print(f"❌ Error inesperado enviando email: {type(e).__name__}: {e}")
+            print(f"[X] Error inesperado enviando email: {type(e).__name__}: {e}")
             return False

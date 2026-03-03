@@ -6,9 +6,10 @@ import sqlite3
 from typing import List, Optional
 from datetime import datetime
 from src.domain.template_event import TemplateEvent
+from .i_template_event_repository import ITemplateEventRepository
 
 
-class TemplateEventRepository:
+class TemplateEventRepository(ITemplateEventRepository):
     """
     Repositorio para gestionar la asignación de plantillas a eventos del sistema
 
@@ -56,11 +57,13 @@ class TemplateEventRepository:
         # Insertar eventos fijos si no existen
         now = datetime.now().isoformat()
         events = [
+            ('tramite_registrado', 'notificacion'),
             ('tramite_observado', 'notificacion'),
             ('tramite_aprobado', 'confirmacion'),
             ('tramite_rechazado', 'notificacion'),
             ('confirmacion_cambio_password', 'bienvenida'),
-            ('comprobante_pago', 'notificacion')
+            ('comprobante_pago', 'notificacion'),
+            ('creacion_cuenta', 'bienvenida')
         ]
 
         for event_type, template_name in events:
