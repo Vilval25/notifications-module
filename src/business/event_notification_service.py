@@ -3,11 +3,26 @@ Servicio orquestador de eventos de notificación
 Maneja la lógica completa: notificación interna + verificar preferencias + enviar
 """
 from typing import Dict, Any, List, Optional
+from dataclasses import dataclass
 from src.business.internal_notification_service import InternalNotificationService
 from src.business.subscription_service import SubscriptionService
 from src.interface.notification_controller import NotificationController
 from src.interface.notification_request import NotificationRequest
 from src.domain.notification_channel import NotificationChannel
+
+
+@dataclass
+class TramiteEventData:
+    """DTO para datos de evento de trámite"""
+    user_id: str
+    user_email: str
+    user_name: str
+    user_phone: str
+    solicitud_id: str
+    event_type: str
+    solicitud_subject: str
+    solicitud_url: str
+    source_module: str
 
 
 class EventNotificationService:
@@ -25,23 +40,15 @@ class EventNotificationService:
         self.subscription_service = subscription_service
         self.notification_controller = notification_controller
 
-    def process_tramite_event(
-        self,
-        user_id: str,
-        user_email: str,
-        user_name: str,
-        user_phone: str,
-        solicitud_id: str,
-        event_type: str,
-        solicitud_subject: str,
-        solicitud_url: Optional[str] = None,
-        source_module: Optional[str] = None
-    ) -> Dict[str, Any]:
+    def process_tramite_event(self, event_data: TramiteEventData) -> Dict[str, Any]:
         """
         Procesa un evento de trámite:
         1. Crea notificación interna (SIEMPRE)
         2. Verifica preferencias del usuario
         3. Envía notificaciones externas según canales habilitados
+
+        Args:
+            event_data: DTO con todos los datos del evento de trámite
 
         Returns:
             Dict con información del proceso:
@@ -49,28 +56,31 @@ class EventNotificationService:
             - channels_sent: Lista de canales por los que se envió
         """
         # Generar notification_subject automáticamente según el tipo de evento
-        notification_subject = self._generate_notification_subject(event_type)
+        notification_subject = self._generate_notification_subject(event_data.event_type)
 
         # 1. Crear notificación interna (SIEMPRE)
         internal_notification = self.internal_notification_service.create_notification_from_event({
-            "user_id": user_id,
-            "solicitud_id": solicitud_id,
-            "event_type": event_type,
+            "user_id": event_data.user_id,
+            "solicitud_id": event_data.solicitud_id,
+            "event_type": event_data.event_type,
             "notification_subject": notification_subject,
-            "solicitud_subject": solicitud_subject,
-            "solicitud_url": solicitud_url
+            "solicitud_subject": event_data.solicitud_subject,
+            "solicitud_url": event_data.solicitud_url
         })
 
         # 2. Verificar canales habilitados para este usuario y evento
-        enabled_channels = self.subscription_service.get_enabled_channels(user_id, event_type)
+        enabled_channels = self.subscription_service.get_enabled_channels(
+            event_data.user_id,
+            event_data.event_type
+        )
 
         # 3. Preparar variables para las plantillas
         variables = {
-            "nombre": user_name,
-            "email": user_email,
-            "enlace": solicitud_url or "",
-            "telefono": user_phone or "",
-            "source_module": source_module or "TRAMITES"
+            "nombre": event_data.user_name,
+            "email": event_data.user_email,
+            "enlace": event_data.solicitud_url,
+            "telefono": event_data.user_phone,
+            "source_module": event_data.source_module
         }
 
         # 4. Enviar por cada canal habilitado
@@ -82,14 +92,18 @@ class EventNotificationService:
                 channel = self._map_channel_name(channel_name)
 
                 # Determinar destinatario según el canal
-                to = self._get_recipient_for_channel(channel_name, user_email, user_phone)
+                to = self._get_recipient_for_channel(
+                    channel_name,
+                    event_data.user_email,
+                    event_data.user_phone
+                )
 
                 if to:
                     # Crear request de notificación
                     notification_request = NotificationRequest(
                         recipient=to,
                         channel=channel,
-                        template_name=event_type,
+                        template_name=event_data.event_type,
                         params=variables
                     )
 

@@ -81,6 +81,7 @@ Modulo de Notificaciones/
 
 - **Arquitectura por Capas**: Separación clara entre dominio, negocio, interfaz, infraestructura y API
 - **Sistema de Eventos**: Notificaciones basadas en eventos de negocio con plantillas activas
+- **Procesamiento Asíncrono**: Endpoints con respuesta inmediata (202 Accepted) y procesamiento en background
 - **Notificaciones Internas**: Panel de usuario para historial de notificaciones de trámites
 - **Gestión de Plantillas**: UI web para CRUD completo de plantillas Handlebars
 - **FastAPI + OpenAPI**: API REST moderna con documentación automática Swagger/ReDoc
@@ -136,6 +137,8 @@ Interfaz web para:
 - Gestión de eventos de negocio
 
 #### Enviar notificaciones vía API (Endpoints de Eventos Unificados):
+
+**Importante:** Los endpoints procesan las notificaciones de forma **asíncrona**. Retornan `202 Accepted` inmediatamente después de validar los datos, y procesan el envío en segundo plano.
 
 **1. Evento de Trámite** (crea notificación interna + envío multicanal):
 ```bash
@@ -199,6 +202,16 @@ curl -X POST http://localhost:8000/api/events/comprobante-pago \
 - `tramite_aprobado` - Trámite aprobado
 - `tramite_rechazado` - Trámite rechazado
 
+**Respuesta esperada:**
+```json
+HTTP/1.1 202 Accepted
+
+{
+  "status": "accepted",
+  "message": "Evento de trámite 'tramite_aprobado' aceptado. Se procesará en segundo plano."
+}
+```
+
 #### Ver logs vía API:
 ```bash
 curl http://localhost:8000/api/notifications/logs?limit=10
@@ -212,11 +225,11 @@ curl http://localhost:8000/api/notifications/logs?limit=10
 - `GET /docs` - Documentación Swagger UI (interactiva) 🔥
 - `GET /redoc` - Documentación ReDoc (alternativa)
 
-**🎯 Eventos Unificados (Para Módulos Externos):**
-- `POST /api/events/tramite` - Procesar evento de trámite (crea notif interna + multicanal)
-- `POST /api/events/creacion-cuenta` - Procesar creación de cuenta (solo email)
-- `POST /api/events/cambio-contrasena` - Procesar cambio de contraseña (solo email)
-- `POST /api/events/comprobante-pago` - Procesar comprobante de pago (solo email)
+**🎯 Eventos Unificados (Para Módulos Externos - Procesamiento Asíncrono):**
+- `POST /api/events/tramite` - Procesar evento de trámite (retorna 202 Accepted, procesa en background)
+- `POST /api/events/creacion-cuenta` - Procesar creación de cuenta (retorna 202 Accepted)
+- `POST /api/events/cambio-contrasena` - Procesar cambio de contraseña (retorna 202 Accepted)
+- `POST /api/events/comprobante-pago` - Procesar comprobante de pago (retorna 202 Accepted)
 
 **📋 Notificaciones Internas:**
 - `GET /user-notifications` - Panel web de notificaciones del usuario 🔥

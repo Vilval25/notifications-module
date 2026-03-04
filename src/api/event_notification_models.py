@@ -25,10 +25,8 @@ class TramiteEventRequest(BaseModel):
     solicitud_id: str = Field(..., description="ID de la solicitud/trámite (ejemplo: 'SOL-2024-001')")
     event_type: str = Field(..., description="Tipo de evento: tramite_registrado | tramite_observado | tramite_aprobado | tramite_rechazado")
     solicitud_subject: str = Field(..., description="Asunto/descripción de la solicitud")
-    solicitud_url: Optional[str] = Field(None, description="URL para ver la solicitud (ejemplo: 'https://campus360.com/tramites/SOL-2024-001' - no es una URL real)")
-
-    # Metadatos opcionales
-    source_module: Optional[str] = Field(None, description="Módulo de origen que genera el evento (ejemplo: 'TRAMITES', 'ACADEMICO', 'BIBLIOTECA')")
+    solicitud_url: str = Field(..., description="URL para ver la solicitud (ejemplo: 'https://campus360.com/tramites/SOL-2024-001' - no es una URL real)")
+    source_module: str = Field(..., description="Módulo de origen que genera el evento (ejemplo: 'TRAMITES', 'ACADEMICO', 'BIBLIOTECA')")
 
     model_config = {
         "json_schema_extra": {
@@ -147,9 +145,7 @@ class ComprobantePagoEventRequest(BaseModel):
 
 class EventNotificationResponse(BaseModel):
     """
-    Response unificada para todos los eventos
+    Response unificada para todos los eventos (procesamiento asíncrono)
     """
-    success: bool
+    status: str  # "accepted"
     message: str
-    internal_notification_id: Optional[int] = None
-    channels_sent: list[str] = []  # ["email", "sms", "whatsapp"]
