@@ -55,10 +55,8 @@ class EventNotificationService:
             - internal_notification_id: ID de la notificación interna creada
             - channels_sent: Lista de canales por los que se envió
         """
-        # Generar notification_subject automáticamente según el tipo de evento
+        # 1. Crear notificación interna
         notification_subject = self._generate_notification_subject(event_data.event_type)
-
-        # 1. Crear notificación interna (SIEMPRE)
         internal_notification = self.internal_notification_service.create_notification_from_event({
             "user_id": event_data.user_id,
             "solicitud_id": event_data.solicitud_id,
@@ -68,53 +66,19 @@ class EventNotificationService:
             "solicitud_url": event_data.solicitud_url
         })
 
-        # 2. Verificar canales habilitados para este usuario y evento
+        # 2. Verificar canales habilitados
         enabled_channels = self.subscription_service.get_enabled_channels(
             event_data.user_id,
             event_data.event_type
         )
 
-        # 3. Preparar variables para las plantillas
-        variables = {
-            "nombre": event_data.user_name,
-            "email": event_data.user_email,
-            "enlace": event_data.solicitud_url,
-            "telefono": event_data.user_phone,
-            "source_module": event_data.source_module
-        }
-
-        # 4. Enviar por cada canal habilitado
-        channels_sent = []
-
-        for channel_name in enabled_channels:
-            try:
-                # Mapear nombre de canal a enum
-                channel = self._map_channel_name(channel_name)
-
-                # Determinar destinatario según el canal
-                to = self._get_recipient_for_channel(
-                    channel_name,
-                    event_data.user_email,
-                    event_data.user_phone
-                )
-
-                if to:
-                    # Crear request de notificación
-                    notification_request = NotificationRequest(
-                        recipient=to,
-                        channel=channel,
-                        template_name=event_data.event_type,
-                        params=variables
-                    )
-
-                    # Enviar notificación
-                    result = self.notification_controller.send_notification(notification_request)
-
-                    if result["status"] == "success":
-                        channels_sent.append(channel_name)
-            except Exception as e:
-                # Log error pero continuar con otros canales
-                pass  # Silenciar errores para evitar problemas de codificación
+        # 3. Preparar variables y enviar por cada canal
+        variables = self._prepare_template_variables(event_data)
+        channels_sent = self._send_notifications_to_channels(
+            enabled_channels,
+            event_data,
+            variables
+        )
 
         return {
             "internal_notification_id": internal_notification.id,
@@ -197,6 +161,75 @@ class EventNotificationService:
             user_name=user_name,
             optional_vars=optional_vars
         )
+
+    def _prepare_template_variables(self, event_data: TramiteEventData) -> Dict[str, Any]:
+        """
+        Prepara el diccionario de variables para las plantillas
+
+        Args:
+            event_data: DTO con los datos del evento de trámite
+
+        Returns:
+            Diccionario con las variables para la plantilla
+        """
+        return {
+            "nombre": event_data.user_name,
+            "email": event_data.user_email,
+            "enlace": event_data.solicitud_url,
+            "telefono": event_data.user_phone,
+            "source_module": event_data.source_module
+        }
+
+    def _send_notifications_to_channels(
+        self,
+        enabled_channels: List[str],
+        event_data: TramiteEventData,
+        variables: Dict[str, Any]
+    ) -> List[str]:
+        """
+        Envía notificaciones por cada canal habilitado
+
+        Args:
+            enabled_channels: Lista de nombres de canales habilitados
+            event_data: DTO con los datos del evento de trámite
+            variables: Variables para las plantillas
+
+        Returns:
+            Lista de nombres de canales por los que se envió exitosamente
+        """
+        channels_sent = []
+
+        for channel_name in enabled_channels:
+            try:
+                # Mapear nombre de canal a enum
+                channel = self._map_channel_name(channel_name)
+
+                # Determinar destinatario según el canal
+                to = self._get_recipient_for_channel(
+                    channel_name,
+                    event_data.user_email,
+                    event_data.user_phone
+                )
+
+                if to:
+                    # Crear request de notificación
+                    notification_request = NotificationRequest(
+                        recipient=to,
+                        channel=channel,
+                        template_name=event_data.event_type,
+                        params=variables
+                    )
+
+                    # Enviar notificación
+                    result = self.notification_controller.send_notification(notification_request)
+
+                    if result["status"] == "success":
+                        channels_sent.append(channel_name)
+            except Exception as e:
+                # Log error pero continuar con otros canales
+                pass  # Silenciar errores para evitar problemas de codificación
+
+        return channels_sent
 
     def _send_email_notification(
         self,
