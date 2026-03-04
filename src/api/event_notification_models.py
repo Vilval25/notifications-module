@@ -58,11 +58,9 @@ class CreacionCuentaEventRequest(BaseModel):
     """
     user_email: str = Field(..., description="Email del nuevo usuario")
     user_name: str = Field(..., description="Nombre del nuevo usuario")
-    activation_url: Optional[str] = Field(None, description="URL de activación de cuenta (ejemplo: 'https://campus360.com/activate/abc123' - no es una URL real)")
-    temporary_password: Optional[str] = Field(None, description="Contraseña temporal generada para el usuario")
-
-    # Metadatos opcionales
-    source_module: Optional[str] = Field(None, description="Módulo de origen que genera el evento (ejemplo: 'USER_REGISTRATION', 'AUTH', 'ADMIN')")
+    activation_url: str = Field(..., description="URL de activación de cuenta (ejemplo: 'https://campus360.com/activate/abc123' - no es una URL real)")
+    temporary_password: str = Field(..., description="Contraseña temporal generada para el usuario")
+    source_module: str = Field(..., description="Módulo de origen que genera el evento (ejemplo: 'USER_REGISTRATION', 'AUTH', 'ADMIN')")
 
     model_config = {
         "json_schema_extra": {
@@ -90,11 +88,9 @@ class CambioContrasenaEventRequest(BaseModel):
     """
     user_email: str = Field(..., description="Email del usuario")
     user_name: str = Field(..., description="Nombre del usuario")
-    reset_url: Optional[str] = Field(None, description="URL para resetear contraseña (ejemplo: 'https://campus360.com/reset-password/xyz789' - no es una URL real)")
-    reset_code: Optional[str] = Field(None, description="Código de verificación numérico de 6 dígitos")
-
-    # Metadatos opcionales
-    source_module: Optional[str] = Field(None, description="Módulo de origen que genera el evento (ejemplo: 'AUTH', 'USER_MANAGEMENT', 'SECURITY')")
+    reset_url: str = Field(..., description="URL para resetear contraseña (ejemplo: 'https://campus360.com/reset-password/xyz789' - no es una URL real)")
+    reset_code: str = Field(..., description="Código de verificación numérico de 6 dígitos")
+    source_module: str = Field(..., description="Módulo de origen que genera el evento (ejemplo: 'AUTH', 'USER_MANAGEMENT', 'SECURITY')")
 
     model_config = {
         "json_schema_extra": {
@@ -122,11 +118,9 @@ class ComprobantePagoEventRequest(BaseModel):
     """
     user_email: str = Field(..., description="Email del usuario")
     user_name: str = Field(..., description="Nombre del usuario")
-    enlace: Optional[str] = Field(None, description="URL para ver detalles del comprobante (ejemplo: 'https://campus360.com/pagos/comprobante/abc123' - no es una URL real)")
-    telefono: Optional[str] = Field(None, description="Teléfono de contacto para consultas sobre el pago")
-
-    # Metadatos opcionales
-    source_module: Optional[str] = Field(None, description="Módulo de origen que genera el evento (ejemplo: 'PAGOS', 'TESORERIA', 'FINANZAS')")
+    enlace: str = Field(..., description="URL para ver detalles del comprobante (ejemplo: 'https://campus360.com/pagos/comprobante/abc123' - no es una URL real)")
+    telefono: str = Field(..., description="Teléfono de contacto para consultas sobre el pago")
+    source_module: str = Field(..., description="Módulo de origen que genera el evento (ejemplo: 'PAGOS', 'TESORERIA', 'FINANZAS')")
 
     model_config = {
         "json_schema_extra": {

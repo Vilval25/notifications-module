@@ -2,7 +2,7 @@
 Servicio orquestador de eventos de notificación
 Maneja la lógica completa: notificación interna + verificar preferencias + enviar
 """
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from dataclasses import dataclass
 from src.business.internal_notification_service import InternalNotificationService
 from src.business.subscription_service import SubscriptionService
@@ -125,117 +125,114 @@ class EventNotificationService:
         self,
         user_email: str,
         user_name: str,
-        activation_url: Optional[str] = None,
-        temporary_password: Optional[str] = None,
-        source_module: Optional[str] = None
+        activation_url: str,
+        temporary_password: str,
+        source_module: str
     ) -> Dict[str, Any]:
         """
         Procesa evento de creación de cuenta
         Solo envía email (no hay notificación interna ni verificación de preferencias)
         """
-        variables = {
-            "nombre": user_name,
-            "email": user_email,
-            "enlace": activation_url or "",
-            "telefono": "",  # No aplica para creación de cuenta
-            "source_module": source_module or "USER_REGISTRATION"
+        optional_vars = {
+            "enlace": activation_url,
+            "telefono": "",
+            "source_module": source_module,
+            "password": temporary_password
         }
 
-        # Si hay contraseña temporal, agregarla
-        if temporary_password:
-            variables["password"] = temporary_password
-
-        try:
-            notification_request = NotificationRequest(
-                recipient=user_email,
-                channel=NotificationChannel.EMAIL,
-                template_name="creacion_cuenta",
-                params=variables
-            )
-
-            result = self.notification_controller.send_notification(notification_request)
-
-            return {
-                "internal_notification_id": None,
-                "channels_sent": ["email"] if result["status"] == "success" else []
-            }
-        except Exception as e:
-            print(f"Error enviando email de creación de cuenta: {e}")
-            return {
-                "internal_notification_id": None,
-                "channels_sent": []
-            }
+        return self._send_email_notification(
+            template_name="creacion_cuenta",
+            user_email=user_email,
+            user_name=user_name,
+            optional_vars=optional_vars
+        )
 
     def process_cambio_contrasena_event(
         self,
         user_email: str,
         user_name: str,
-        reset_url: Optional[str] = None,
-        reset_code: Optional[str] = None,
-        source_module: Optional[str] = None
+        reset_url: str,
+        reset_code: str,
+        source_module: str
     ) -> Dict[str, Any]:
         """
         Procesa evento de cambio/reseteo de contraseña
         Solo envía email (no hay notificación interna ni verificación de preferencias)
         """
-        variables = {
-            "nombre": user_name,
-            "email": user_email,
-            "enlace": reset_url or "",
-            "telefono": "",  # No aplica
-            "source_module": source_module or "AUTH"
+        optional_vars = {
+            "enlace": reset_url,
+            "telefono": "",
+            "source_module": source_module,
+            "codigo": reset_code
         }
 
-        # Si hay código de reseteo, agregarlo
-        if reset_code:
-            variables["codigo"] = reset_code
-
-        try:
-            notification_request = NotificationRequest(
-                recipient=user_email,
-                channel=NotificationChannel.EMAIL,
-                template_name="cambio_contrasena",
-                params=variables
-            )
-
-            result = self.notification_controller.send_notification(notification_request)
-
-            return {
-                "internal_notification_id": None,
-                "channels_sent": ["email"] if result["status"] == "success" else []
-            }
-        except Exception as e:
-            print(f"Error enviando email de cambio de contraseña: {e}")
-            return {
-                "internal_notification_id": None,
-                "channels_sent": []
-            }
+        return self._send_email_notification(
+            template_name="cambio_contrasena",
+            user_email=user_email,
+            user_name=user_name,
+            optional_vars=optional_vars
+        )
 
     def process_comprobante_pago_event(
         self,
         user_email: str,
         user_name: str,
-        enlace: Optional[str] = None,
-        telefono: Optional[str] = None,
-        source_module: Optional[str] = None
+        enlace: str,
+        telefono: str,
+        source_module: str
     ) -> Dict[str, Any]:
         """
         Procesa evento de comprobante de pago
         Solo envía email (no hay notificación interna ni verificación de preferencias)
         """
+        optional_vars = {
+            "enlace": enlace,
+            "telefono": telefono,
+            "source_module": source_module
+        }
+
+        return self._send_email_notification(
+            template_name="comprobante_pago",
+            user_email=user_email,
+            user_name=user_name,
+            optional_vars=optional_vars
+        )
+
+    def _send_email_notification(
+        self,
+        template_name: str,
+        user_email: str,
+        user_name: str,
+        optional_vars: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Método genérico para enviar notificaciones por email
+
+        Args:
+            template_name: Nombre de la plantilla a usar
+            user_email: Email del destinatario
+            user_name: Nombre del destinatario
+            optional_vars: Variables adicionales para la plantilla (enlace, telefono, source_module, etc.)
+
+        Returns:
+            Dict con información del proceso:
+            - internal_notification_id: None (no hay notificación interna)
+            - channels_sent: Lista con "email" si fue exitoso, lista vacía si falló
+        """
+        # Construir variables base
         variables = {
             "nombre": user_name,
-            "email": user_email,
-            "enlace": enlace or "",
-            "telefono": telefono or "",
-            "source_module": source_module or "PAGOS"
+            "email": user_email
         }
+
+        # Agregar variables opcionales
+        variables.update(optional_vars)
 
         try:
             notification_request = NotificationRequest(
                 recipient=user_email,
                 channel=NotificationChannel.EMAIL,
-                template_name="comprobante_pago",
+                template_name=template_name,
                 params=variables
             )
 
@@ -246,7 +243,7 @@ class EventNotificationService:
                 "channels_sent": ["email"] if result["status"] == "success" else []
             }
         except Exception as e:
-            print(f"Error enviando email de comprobante de pago: {e}")
+            print(f"Error enviando email con plantilla '{template_name}': {e}")
             return {
                 "internal_notification_id": None,
                 "channels_sent": []
