@@ -7,9 +7,10 @@ from typing import List, Optional
 from datetime import datetime
 from src.domain.internal_notification import InternalNotification
 from .i_internal_notification_repository import IInternalNotificationRepository
+from .base_sql_repository import BaseSQLRepository
 
 
-class InternalNotificationRepository(IInternalNotificationRepository):
+class InternalNotificationRepository(BaseSQLRepository, IInternalNotificationRepository):
     """
     Repositorio para operaciones CRUD sobre notificaciones internas
 
@@ -23,15 +24,13 @@ class InternalNotificationRepository(IInternalNotificationRepository):
         Args:
             db_path: Ruta a la base de datos SQLite
         """
-        self._db_path = db_path
+        super().__init__(db_path)
         self._init_database()
 
     def _init_database(self):
-        """Crea la tabla internal_notifications si no existe"""
-        conn = sqlite3.connect(self._db_path)
-        cursor = conn.cursor()
-
-        cursor.execute("""
+        """Crea la tabla internal_notifications y sus índices si no existen"""
+        # Crear tabla principal
+        self._init_table("""
             CREATE TABLE IF NOT EXISTS internal_notifications (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id TEXT NOT NULL,
@@ -46,28 +45,24 @@ class InternalNotificationRepository(IInternalNotificationRepository):
         """)
 
         # Crear índices para búsquedas eficientes
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_user_id
-            ON internal_notifications(user_id)
-        """)
-
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_solicitud_id
-            ON internal_notifications(solicitud_id)
-        """)
-
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_is_read
-            ON internal_notifications(is_read)
-        """)
-
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_created_at
-            ON internal_notifications(created_at DESC)
-        """)
-
-        conn.commit()
-        conn.close()
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_user_id
+                ON internal_notifications(user_id)
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_solicitud_id
+                ON internal_notifications(solicitud_id)
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_is_read
+                ON internal_notifications(is_read)
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_created_at
+                ON internal_notifications(created_at DESC)
+            """)
 
     def save(self, notification: InternalNotification) -> InternalNotification:
         """
@@ -79,10 +74,7 @@ class InternalNotificationRepository(IInternalNotificationRepository):
         Returns:
             Notificación guardada con ID asignado
         """
-        conn = sqlite3.connect(self._db_path)
-        cursor = conn.cursor()
-
-        cursor.execute("""
+        notification.id = self._execute_commit("""
             INSERT INTO internal_notifications
             (user_id, solicitud_id, event_type, notification_subject,
              solicitud_subject, is_read, created_at, solicitud_url)
@@ -97,10 +89,6 @@ class InternalNotificationRepository(IInternalNotificationRepository):
             notification.created_at.isoformat(),
             notification.solicitud_url
         ))
-
-        notification.id = cursor.lastrowid
-        conn.commit()
-        conn.close()
 
         return notification
 
@@ -117,9 +105,6 @@ class InternalNotificationRepository(IInternalNotificationRepository):
         Returns:
             Lista de notificaciones ordenadas por fecha descendente
         """
-        conn = sqlite3.connect(self._db_path)
-        cursor = conn.cursor()
-
         query = """
             SELECT id, user_id, solicitud_id, event_type, notification_subject,
                    solicitud_subject, is_read, created_at, solicitud_url
@@ -138,24 +123,9 @@ class InternalNotificationRepository(IInternalNotificationRepository):
             query += " LIMIT ?"
             params.append(limit)
 
-        cursor.execute(query, params)
+        rows = self._execute_query(query, tuple(params))
 
-        notifications = []
-        for row in cursor.fetchall():
-            notifications.append(InternalNotification(
-                id=row[0],
-                user_id=row[1],
-                solicitud_id=row[2],
-                event_type=row[3],
-                notification_subject=row[4],
-                solicitud_subject=row[5],
-                is_read=bool(row[6]),
-                created_at=datetime.fromisoformat(row[7]),
-                solicitud_url=row[8]
-            ))
-
-        conn.close()
-        return notifications
+        return [self._map_row_to_notification(row) for row in rows]
 
     def find_by_id(self, notification_id: int) -> Optional[InternalNotification]:
         """
@@ -167,31 +137,15 @@ class InternalNotificationRepository(IInternalNotificationRepository):
         Returns:
             Notificación o None si no existe
         """
-        conn = sqlite3.connect(self._db_path)
-        cursor = conn.cursor()
-
-        cursor.execute("""
+        rows = self._execute_query("""
             SELECT id, user_id, solicitud_id, event_type, notification_subject,
                    solicitud_subject, is_read, created_at, solicitud_url
             FROM internal_notifications
             WHERE id = ?
         """, (notification_id,))
 
-        row = cursor.fetchone()
-        conn.close()
-
-        if row:
-            return InternalNotification(
-                id=row[0],
-                user_id=row[1],
-                solicitud_id=row[2],
-                event_type=row[3],
-                notification_subject=row[4],
-                solicitud_subject=row[5],
-                is_read=bool(row[6]),
-                created_at=datetime.fromisoformat(row[7]),
-                solicitud_url=row[8]
-            )
+        if rows:
+            return self._map_row_to_notification(rows[0])
 
         return None
 
@@ -205,20 +159,14 @@ class InternalNotificationRepository(IInternalNotificationRepository):
         Returns:
             True si se actualizó correctamente, False en caso contrario
         """
-        conn = sqlite3.connect(self._db_path)
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            UPDATE internal_notifications
-            SET is_read = 1
-            WHERE id = ?
-        """, (notification_id,))
-
-        rows_affected = cursor.rowcount
-        conn.commit()
-        conn.close()
-
-        return rows_affected > 0
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE internal_notifications
+                SET is_read = 1
+                WHERE id = ?
+            """, (notification_id,))
+            return cursor.rowcount > 0
 
     def mark_all_as_read(self, user_id: str) -> int:
         """
@@ -304,21 +252,37 @@ class InternalNotificationRepository(IInternalNotificationRepository):
         Returns:
             Número de notificaciones eliminadas
         """
-        conn = sqlite3.connect(self._db_path)
-        cursor = conn.cursor()
-
         cutoff_date = datetime.now().replace(
             hour=0, minute=0, second=0, microsecond=0
         )
         cutoff_date = cutoff_date.replace(day=cutoff_date.day - days)
 
-        cursor.execute("""
-            DELETE FROM internal_notifications
-            WHERE user_id = ? AND created_at < ?
-        """, (user_id, cutoff_date.isoformat()))
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                DELETE FROM internal_notifications
+                WHERE user_id = ? AND created_at < ?
+            """, (user_id, cutoff_date.isoformat()))
+            return cursor.rowcount
 
-        rows_affected = cursor.rowcount
-        conn.commit()
-        conn.close()
+    def _map_row_to_notification(self, row: sqlite3.Row) -> InternalNotification:
+        """
+        Mapea una fila de la BD a un objeto InternalNotification
 
-        return rows_affected
+        Args:
+            row: Fila de la base de datos
+
+        Returns:
+            Objeto InternalNotification
+        """
+        return InternalNotification(
+            id=row['id'],
+            user_id=row['user_id'],
+            solicitud_id=row['solicitud_id'],
+            event_type=row['event_type'],
+            notification_subject=row['notification_subject'],
+            solicitud_subject=row['solicitud_subject'],
+            is_read=bool(row['is_read']),
+            created_at=datetime.fromisoformat(row['created_at']),
+            solicitud_url=row['solicitud_url']
+        )

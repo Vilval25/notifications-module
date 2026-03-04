@@ -7,9 +7,10 @@ from typing import List, Optional
 from datetime import datetime
 from src.domain.template_event import TemplateEvent
 from .i_template_event_repository import ITemplateEventRepository
+from .base_sql_repository import BaseSQLRepository
 
 
-class TemplateEventRepository(ITemplateEventRepository):
+class TemplateEventRepository(BaseSQLRepository, ITemplateEventRepository):
     """
     Repositorio para gestionar la asignación de plantillas a eventos del sistema
 
@@ -23,16 +24,13 @@ class TemplateEventRepository(ITemplateEventRepository):
         Args:
             db_path: Ruta a la base de datos SQLite
         """
-        self._db_path = db_path
+        super().__init__(db_path)
         self._init_database()
 
     def _init_database(self):
         """Crea la tabla template_events si no existe e inserta eventos fijos"""
-        conn = sqlite3.connect(self._db_path)
-        cursor = conn.cursor()
-
         # Crear tabla
-        cursor.execute("""
+        self._init_table("""
             CREATE TABLE IF NOT EXISTS template_events (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 event_type TEXT UNIQUE NOT NULL,
@@ -43,38 +41,35 @@ class TemplateEventRepository(ITemplateEventRepository):
             )
         """)
 
-        # Crear índices para búsquedas eficientes
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_event_type
-            ON template_events(event_type)
-        """)
-
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_template_name
-            ON template_events(template_name)
-        """)
+        # Crear índices
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_event_type
+                ON template_events(event_type)
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_template_name
+                ON template_events(template_name)
+            """)
 
         # Insertar eventos fijos si no existen
         now = datetime.now().isoformat()
         events = [
-            ('tramite_registrado', 'notificacion'),
-            ('tramite_observado', 'notificacion'),
-            ('tramite_aprobado', 'confirmacion'),
-            ('tramite_rechazado', 'notificacion'),
-            ('confirmacion_cambio_password', 'bienvenida'),
-            ('comprobante_pago', 'notificacion'),
-            ('creacion_cuenta', 'bienvenida')
+            ('tramite_registrado', 'notificacion', 1, now, now),
+            ('tramite_observado', 'notificacion', 1, now, now),
+            ('tramite_aprobado', 'confirmacion', 1, now, now),
+            ('tramite_rechazado', 'notificacion', 1, now, now),
+            ('confirmacion_cambio_password', 'bienvenida', 1, now, now),
+            ('comprobante_pago', 'notificacion', 1, now, now),
+            ('creacion_cuenta', 'bienvenida', 1, now, now)
         ]
 
-        for event_type, template_name in events:
-            cursor.execute("""
-                INSERT OR IGNORE INTO template_events
-                (event_type, template_name, is_active, created_at, updated_at)
-                VALUES (?, ?, 1, ?, ?)
-            """, (event_type, template_name, now, now))
-
-        conn.commit()
-        conn.close()
+        self._execute_many("""
+            INSERT OR IGNORE INTO template_events
+            (event_type, template_name, is_active, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+        """, events)
 
     def get_all_events(self) -> List[TemplateEvent]:
         """
@@ -83,28 +78,13 @@ class TemplateEventRepository(ITemplateEventRepository):
         Returns:
             Lista de objetos TemplateEvent
         """
-        conn = sqlite3.connect(self._db_path)
-        cursor = conn.cursor()
-
-        cursor.execute("""
+        rows = self._execute_query("""
             SELECT id, event_type, template_name, is_active, created_at, updated_at
             FROM template_events
             ORDER BY event_type
         """)
 
-        events = []
-        for row in cursor.fetchall():
-            events.append(TemplateEvent(
-                id=row[0],
-                event_type=row[1],
-                template_name=row[2],
-                is_active=bool(row[3]),
-                created_at=datetime.fromisoformat(row[4]),
-                updated_at=datetime.fromisoformat(row[5])
-            ))
-
-        conn.close()
-        return events
+        return [self._map_row_to_event(row) for row in rows]
 
     def get_event_by_type(self, event_type: str) -> Optional[TemplateEvent]:
         """
@@ -239,16 +219,29 @@ class TemplateEventRepository(ITemplateEventRepository):
         Returns:
             Lista de tipos de eventos asignados a esta plantilla
         """
-        conn = sqlite3.connect(self._db_path)
-        cursor = conn.cursor()
-
-        cursor.execute("""
+        rows = self._execute_query("""
             SELECT event_type
             FROM template_events
             WHERE template_name = ? AND is_active = 1
         """, (template_name,))
 
-        events = [row[0] for row in cursor.fetchall()]
-        conn.close()
+        return [row['event_type'] for row in rows]
 
-        return events
+    def _map_row_to_event(self, row: sqlite3.Row) -> TemplateEvent:
+        """
+        Mapea una fila de la BD a un objeto TemplateEvent
+
+        Args:
+            row: Fila de la base de datos
+
+        Returns:
+            Objeto TemplateEvent
+        """
+        return TemplateEvent(
+            id=row['id'],
+            event_type=row['event_type'],
+            template_name=row['template_name'],
+            is_active=bool(row['is_active']),
+            created_at=datetime.fromisoformat(row['created_at']),
+            updated_at=datetime.fromisoformat(row['updated_at'])
+        )
